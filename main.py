@@ -12,7 +12,10 @@ clock = pygame.time.Clock()
 
 # Загружаем и поворачиваем изображение игрока на заданный угол
 player_image_original = pygame.image.load("player.png").convert_alpha()
-player_image_original = pygame.transform.scale(player_image_original, (40, 40))
+player_image_original = pygame.transform.scale(player_image_original, (80, 80))
+
+MAP_WIDTH = 3000
+MAP_HEIGHT = 3000
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -66,7 +69,7 @@ player_hp = 5
 enemy_damage_delay = 1000  # мс
 last_damage_times = {}  # по enemy_id: время последнего удара
 
-initial_rotation_angle = 290  # например, 45 градусов
+initial_rotation_angle = 290  # например, 290 градусов
 player_image_original = pygame.transform.rotate(player_image_original, initial_rotation_angle)
 
 
@@ -96,25 +99,30 @@ def shoot_bullet(start_pos, target_pos):
 
 def spawn_enemy():
     margin = 100
-    side = random.choice(['top', 'bottom', 'left', 'right'])
-    if side == 'top':
-        x = random.randint(camera_offset[0] - margin, camera_offset[0] + WIDTH + margin)
-        y = camera_offset[1] - margin
-    elif side == 'bottom':
-        x = random.randint(camera_offset[0] - margin, camera_offset[0] + WIDTH + margin)
-        y = camera_offset[1] + HEIGHT + margin
-    elif side == 'left':
-        x = camera_offset[0] - margin
-        y = random.randint(camera_offset[1] - margin, camera_offset[1] + HEIGHT + margin)
-    else:
-        x = camera_offset[0] + WIDTH + margin
-        y = random.randint(camera_offset[1] - margin, camera_offset[1] + HEIGHT + margin)
+    for _ in range(10):  # Попытка найти подходящее место
+        side = random.choice(['top', 'bottom', 'left', 'right'])
+        if side == 'top':
+            x = random.randint(camera_offset[0] - margin, camera_offset[0] + WIDTH + margin)
+            y = camera_offset[1] - margin
+        elif side == 'bottom':
+            x = random.randint(camera_offset[0] - margin, camera_offset[0] + WIDTH + margin)
+            y = camera_offset[1] + HEIGHT + margin
+        elif side == 'left':
+            x = camera_offset[0] - margin
+            y = random.randint(camera_offset[1] - margin, camera_offset[1] + HEIGHT + margin)
+        else:
+            x = camera_offset[0] + WIDTH + margin
+            y = random.randint(camera_offset[1] - margin, camera_offset[1] + HEIGHT + margin)
 
-    enemies.append({'pos': [x, y]})
+        if 0 <= x <= MAP_WIDTH and 0 <= y <= MAP_HEIGHT:
+            enemies.append({'pos': [x, y]})
+            break  # Успешный спавн — выйти
 
 
 def distance(a, b):
     return math.hypot(a[0] - b[0], a[1] - b[1])
+
+
 running = True
 
 
@@ -162,12 +170,16 @@ while running:
         total_ammo -= refill
         reloading = False
 
-    # Управление игроком (остальное остаётся как было)
+    # Управление игроком
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]: player_pos[1] -= player_speed
-    if keys[pygame.K_s]: player_pos[1] += player_speed
-    if keys[pygame.K_a]: player_pos[0] -= player_speed
-    if keys[pygame.K_d]: player_pos[0] += player_speed
+    if keys[pygame.K_w] and player_pos[1] - player_speed >= 0:
+        player_pos[1] -= player_speed
+    if keys[pygame.K_s] and player_pos[1] + player_speed <= MAP_HEIGHT - player_size:
+        player_pos[1] += player_speed
+    if keys[pygame.K_a] and player_pos[0] - player_speed >= 0:
+        player_pos[0] -= player_speed
+    if keys[pygame.K_d] and player_pos[0] + player_speed <= MAP_WIDTH - player_size:
+        player_pos[0] += player_speed
 
     # Камера
     camera_offset[0] = player_pos[0] - WIDTH // 2
@@ -187,7 +199,6 @@ while running:
         screen_y = int(pickup['pos'][1] - camera_offset[1])
         pygame.draw.circle(screen, (100, 100, 255), (screen_x, screen_y), pickup_radius)
 
-    # Игрок
     # Игрок — вращение за курсором
     dx = world_mouse_pos[0] - player_pos[0]
     dy = world_mouse_pos[1] - player_pos[1]
@@ -226,9 +237,17 @@ while running:
         dx = player_pos[0] - enemy['pos'][0]
         dy = player_pos[1] - enemy['pos'][1]
         angle = math.atan2(dy, dx)
-        enemy['pos'][0] += math.cos(angle) * enemy_speed
-        enemy['pos'][1] += math.sin(angle) * enemy_speed
-        pygame.draw.circle(screen, GREEN, (int(enemy['pos'][0] - camera_offset[0]), int(enemy['pos'][1] - camera_offset[1])), enemy_radius)
+        new_x = enemy['pos'][0] + math.cos(angle) * enemy_speed
+        new_y = enemy['pos'][1] + math.sin(angle) * enemy_speed
+
+        # Ограничения по границам карты
+        if 0 <= new_x <= MAP_WIDTH and 0 <= new_y <= MAP_HEIGHT:
+            enemy['pos'][0] = new_x
+            enemy['pos'][1] = new_y
+
+        pygame.draw.circle(screen, GREEN,
+                           (int(enemy['pos'][0] - camera_offset[0]), int(enemy['pos'][1] - camera_offset[1])),
+                           enemy_radius)
 
     # Спавн врагов
     enemy_spawn_timer += dt
@@ -246,3 +265,13 @@ while running:
 
 pygame.quit()
 sys.exit()
+
+
+# TODO:
+# давай реализуем следующее:
+# HUD-элементы:
+# Индикатор перезарядки (например, полоса или надпись "Reloading...").
+# Таймер выживания или счётчик убийств.
+# Мини-карта (хотя бы схематичная точка игрока и врагов).
+# Отображение текущего количества врагов на карте.
+# только распиши подробно куда и что добавляем
