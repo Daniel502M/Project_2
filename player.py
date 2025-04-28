@@ -3,6 +3,7 @@ import math
 from settings import PLAYER_SPEED
 from bullet import Bullet
 
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
@@ -33,7 +34,7 @@ class Player(pygame.sprite.Sprite):
 
     def rotate(self, mouse_pos):
         rel_x, rel_y = mouse_pos[0] - self.rect.centerx, mouse_pos[1] - self.rect.centery
-        angle = math.degrees(-math.atan2(rel_y, rel_x))
+        angle = math.degrees(-math.atan2(rel_y, rel_x)) + 282
         self.image = pygame.transform.rotate(self.original_image, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
