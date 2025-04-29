@@ -1,36 +1,40 @@
 import pygame
-import random
 import math
-from settings import ENEMY_SPEED, SPAWN_DISTANCE, WIDTH, HEIGHT
+from settings import ENEMY_SPEED
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, player_pos):
+    def __init__(self, target_pos):
         super().__init__()
-
-        self.image = pygame.image.load('assets/enemy.png').convert_alpha()
-        self.rect = self.image.get_rect()
-
-        # Спавним за границей экрана
-        side = random.choice(['top', 'bottom', 'left', 'right'])
-        if side == 'top':
-            self.rect.center = (random.randint(0, WIDTH), -SPAWN_DISTANCE)
-        elif side == 'bottom':
-            self.rect.center = (random.randint(0, WIDTH), HEIGHT + SPAWN_DISTANCE)
-        elif side == 'left':
-            self.rect.center = (-SPAWN_DISTANCE, random.randint(0, HEIGHT))
-        else:
-            self.rect.center = (WIDTH + SPAWN_DISTANCE, random.randint(0, HEIGHT))
-
+        enemy_image_original = pygame.image.load("assets/enemy.png").convert_alpha()
+        self.original_image = pygame.transform.scale(enemy_image_original, (60, 60))
+        self.image = self.original_image
+        self.rect = self.image.get_rect(center=(random_spawn_position()))
         self.speed = ENEMY_SPEED
-        self.player_pos = player_pos
         self.health = 50
 
     def update(self, player_rect):
-        # Бежим к игроку
-        dir_vector = pygame.math.Vector2(player_rect.centerx - self.rect.centerx,
-                                         player_rect.centery - self.rect.centery)
-        if dir_vector.length() != 0:
-            dir_vector = dir_vector.normalize()
-        self.rect.centerx += dir_vector.x * self.speed
-        self.rect.centery += dir_vector.y * self.speed
+        # Движение к игроку
+        direction = pygame.Vector2(player_rect.center) - pygame.Vector2(self.rect.center)
+        if direction.length() != 0:
+            direction = direction.normalize()
+            self.rect.center += direction * self.speed
+
+        # Поворот в сторону игрока
+        angle = math.degrees(-math.atan2(direction.y, direction.x)) + 90
+        self.image = pygame.transform.rotate(self.original_image, angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+
+def random_spawn_position():
+    import random
+    # Спавним за краями экрана
+    side = random.choice(['top', 'bottom', 'left', 'right'])
+    if side == 'top':
+        return (random.randint(0, 800), -50)
+    elif side == 'bottom':
+        return (random.randint(0, 800), 650)
+    elif side == 'left':
+        return (-50, random.randint(0, 600))
+    else:
+        return (850, random.randint(0, 600))

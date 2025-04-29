@@ -36,7 +36,7 @@ pygame.time.set_timer(SPAWN_EVENT, 2000)
 
 font = pygame.font.SysFont(None, 30)
 
-# Цикл игры
+# Игровой цикл
 while True:
     dt = clock.tick(FPS)
     keys = pygame.key.get_pressed()
@@ -56,13 +56,20 @@ while True:
             if event.button == 1:
                 player.shooting = False
 
-    # Обновление
-    player.update(keys, mouse_pos, bullets)
+    # Камера
+    offset = pygame.Vector2(player.rect.center) - pygame.Vector2(WIDTH // 2, HEIGHT // 2)
+
+
+    # Учитываем смещение камеры для мыши
+    mouse_world_pos = (mouse_pos[0] + offset.x, mouse_pos[1] + offset.y)
+
+    # Обновления
+    player.update(keys, mouse_world_pos, bullets)
     bullets.update()
     enemies.update(player.rect)
     pickups.update()
 
-    # Столкновения пули ↔ враги
+    # Столкновения
     for bullet in bullets:
         hit_list = pygame.sprite.spritecollide(bullet, enemies, False)
         for enemy in hit_list:
@@ -73,7 +80,6 @@ while True:
                 enemy.kill()
                 kills += 1
 
-    # Столкновения игрок ↔ враги
     if pygame.sprite.spritecollide(player, enemies, False):
         player.health -= 1
         if player.health <= 0:
@@ -81,22 +87,38 @@ while True:
             pygame.quit()
             sys.exit()
 
-    # Подбор патронов
     pickup_hits = pygame.sprite.spritecollide(player, pickups, True)
     for pickup in pickup_hits:
         player.ammo += 5
 
+
     # Отрисовка
     screen.fill((30, 30, 30))
-    player_group.draw(screen)
-    bullets.draw(screen)
-    enemies.draw(screen)
-    pickups.draw(screen)
+
+    # --- СЕТКА ---
+    TILE_SIZE = 100
+    for x in range(int(-offset.x) % TILE_SIZE, WIDTH, TILE_SIZE):
+        pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, HEIGHT))
+    for y in range(int(-offset.y) % TILE_SIZE, HEIGHT, TILE_SIZE):
+        pygame.draw.line(screen, (50, 50, 50), (0, y), (WIDTH, y))
+    # --- КОНЕЦ СЕТКИ ---
+
+    # Рисуем все объекты со сдвигом offset
+    for pickup in pickups:
+        screen.blit(pickup.image, pickup.rect.topleft - offset)
+
+    for bullet in bullets:
+        screen.blit(bullet.image, bullet.rect.topleft - offset)
+
+    for enemy in enemies:
+        screen.blit(enemy.image, enemy.rect.topleft - offset)
+
+    screen.blit(player.image, player.rect.topleft - offset)
 
     # Прицел
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
 
-    # Информация
+    # HUD
     ammo_text = font.render(f"Ammo: {player.ammo}", True, (255, 255, 255))
     health_text = font.render(f"Health: {player.health}", True, (255, 0, 0))
     time_text = font.render(f"Survived: {(pygame.time.get_ticks() - start_time) // 1000}s", True, (255, 255, 255))
