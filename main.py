@@ -133,13 +133,29 @@ while True:
 
     # Мини-карта
     mini_map_rect = pygame.Rect(WIDTH - 110, 10, 100, 100)
-    pygame.draw.rect(screen, (50, 50, 50), mini_map_rect)
-    player_pos_on_map = (mini_map_rect.x + player.rect.centerx * 100 // WIDTH,
-                         mini_map_rect.y + player.rect.centery * 100 // HEIGHT)
-    pygame.draw.circle(screen, (0, 255, 0), player_pos_on_map, 3)
+    pygame.draw.rect(screen, (50, 50, 50), mini_map_rect, border_radius=4)
+    pygame.draw.rect(screen, (255, 255, 255), mini_map_rect, 2, border_radius=4)
+
+    # Размер мини-карты и её масштаб относительно области вокруг игрока
+    MINI_MAP_SCALE = 0.1  # Чем меньше, тем больше область охвата на миникарте
+    MAP_VIEW_SIZE = 1000  # Отображаемая область игрового мира на миникарте
+
+    center_x, center_y = player.rect.center
+
+    # Рисуем игрока в центре миникарты
+    pygame.draw.circle(screen, (0, 255, 0), (mini_map_rect.centerx, mini_map_rect.centery), 3)
+
+    # Рисуем врагов
     for enemy in enemies:
-        enemy_pos_on_map = (mini_map_rect.x + enemy.rect.centerx * 100 // WIDTH,
-                            mini_map_rect.y + enemy.rect.centery * 100 // HEIGHT)
-        pygame.draw.circle(screen, (255, 0, 0), enemy_pos_on_map, 2)
+        dx = enemy.rect.centerx - center_x
+        dy = enemy.rect.centery - center_y
+
+        # Масштабирование
+        map_x = mini_map_rect.centerx + int(dx * MINI_MAP_SCALE)
+        map_y = mini_map_rect.centery + int(dy * MINI_MAP_SCALE)
+
+        # Ограничение отрисовки врагов только в пределах миникарты
+        if mini_map_rect.collidepoint(map_x, map_y):
+            pygame.draw.circle(screen, (255, 0, 0), (map_x, map_y), 2)
 
     pygame.display.update()
