@@ -7,17 +7,20 @@ from player import Player
 from enemy import Enemy
 from bullet import Bullet
 from pickup import AmmoPickup
+from map_loader import TileMap
+
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.mouse.set_visible(False)
 
+tile_map = TileMap("Maps/Cart_Game.tmx")
+obstacles = tile_map.get_collision_rects()
+
 # Прицел
 crosshair_surface = pygame.Surface((40, 40), pygame.SRCALPHA)
 pygame.draw.circle(crosshair_surface, (255, 0, 0), (20, 20), 15, 2)
-pygame.draw.line(crosshair_surface, (255, 0, 0), (20, 0), (20, 40), 2)
-pygame.draw.line(crosshair_surface, (255, 0, 0), (0, 20), (40, 20), 2)
 
 # Игрок и группы
 player = Player((WIDTH // 2, HEIGHT // 2))
@@ -59,7 +62,6 @@ while True:
     # Камера
     offset = pygame.Vector2(player.rect.center) - pygame.Vector2(WIDTH // 2, HEIGHT // 2)
 
-
     # Учитываем смещение камеры для мыши
     mouse_world_pos = (mouse_pos[0] + offset.x, mouse_pos[1] + offset.y)
 
@@ -91,17 +93,11 @@ while True:
     for pickup in pickup_hits:
         player.ammo += 5
 
-
     # Отрисовка
     screen.fill((30, 30, 30))
 
-    # --- СЕТКА ---
-    TILE_SIZE = 100
-    for x in range(int(-offset.x) % TILE_SIZE, WIDTH, TILE_SIZE):
-        pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, HEIGHT))
-    for y in range(int(-offset.y) % TILE_SIZE, HEIGHT, TILE_SIZE):
-        pygame.draw.line(screen, (50, 50, 50), (0, y), (WIDTH, y))
-    # --- КОНЕЦ СЕТКИ ---
+    # Рисуем карту со смещением камеры
+    tile_map.draw(screen, offset)
 
     # Рисуем все объекты со сдвигом offset
     for pickup in pickups:

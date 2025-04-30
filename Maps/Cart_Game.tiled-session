@@ -1,0 +1,30 @@
+{
+    "activeFile": "Cart_Game.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "Все файлы (*)",
+    "fileStates": {
+        "Cart_Game.tmx": {
+            "scale": 0.33,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 37.87878787878799,
+                "y": 446.9696969696969
+            }
+        },
+        "Sprite_for_Cart_Game.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        }
+    },
+    "mapScene.enableWorlds": true,
+    "openFiles": [
+        "Cart_Game.tmx"
+    ],
+    "project": "Cart_Game.tiled-project",
+    "recentFiles": [
+        "Cart_Game.tmx",
+        "Sprite_for_Cart_Game.tsx"
+    ]
+}

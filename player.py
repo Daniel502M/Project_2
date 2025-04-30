@@ -12,7 +12,7 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
         self.speed = PLAYER_SPEED
         self.health = 100
-        self.ammo = 10
+        self.ammo = 20
         self.shooting = False
         self.shoot_cooldown = 250  # мс
         self.last_shot = pygame.time.get_ticks()
