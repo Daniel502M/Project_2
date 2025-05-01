@@ -66,9 +66,9 @@ while True:
     mouse_world_pos = (mouse_pos[0] + offset.x, mouse_pos[1] + offset.y)
 
     # Обновления
-    player.update(keys, mouse_world_pos, bullets)
+    player.update(keys, mouse_world_pos, bullets, obstacles)
     bullets.update()
-    enemies.update(player.rect)
+    enemies.update(player.rect, obstacles)
     pickups.update()
 
     # Столкновения
@@ -98,6 +98,9 @@ while True:
 
     # Рисуем карту со смещением камеры
     tile_map.draw(screen, offset)
+
+    for rect in obstacles:
+        pygame.draw.rect(screen, (255, 0, 0), rect.move(-offset), 2)  # Красные рамки
 
     # Рисуем все объекты со сдвигом offset
     for pickup in pickups:

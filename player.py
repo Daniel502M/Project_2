@@ -2,6 +2,7 @@ import pygame
 import math
 from settings import PLAYER_SPEED
 from bullet import Bullet
+from settings import MAP_WIDTH, MAP_HEIGHT
 
 
 class Player(pygame.sprite.Sprite):
@@ -18,10 +19,11 @@ class Player(pygame.sprite.Sprite):
         self.last_shot = pygame.time.get_ticks()
         self.reload_font = pygame.font.Font(None, 30)
 
-    def update(self, keys, mouse_pos, bullets_group):
-        self.handle_movement(keys)
+    def update(self, keys, mouse_pos, bullets_group, obstacles):
+        dx, dy = self.handle_movement(keys)
         self.rotate(mouse_pos)
         self.handle_shooting(mouse_pos, bullets_group)
+        self.move_and_collide(dx, dy, obstacles)
 
     def handle_movement(self, keys):
         dx = dy = 0
@@ -31,6 +33,7 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_d]: dx += self.speed
         self.rect.x += dx
         self.rect.y += dy
+        return dx, dy
 
     def rotate(self, mouse_pos):
         rel_x, rel_y = mouse_pos[0] - self.rect.centerx, mouse_pos[1] - self.rect.centery
@@ -51,3 +54,32 @@ class Player(pygame.sprite.Sprite):
         if now - self.last_shot < self.shoot_cooldown:
             text = self.reload_font.render("Reloading...", True, (255, 0, 0))
             screen.blit(text, (10, 70))
+
+    def move_and_collide(self, dx, dy, obstacles):
+        # Движение по X
+        self.rect.x += dx
+        for obstacle in obstacles:
+            if self.rect.colliderect(obstacle):
+                if dx > 0:  # движение вправо
+                    self.rect.right = obstacle.left
+                elif dx < 0:  # влево
+                    self.rect.left = obstacle.right
+
+        # Движение по Y
+        self.rect.y += dy
+        for obstacle in obstacles:
+            if self.rect.colliderect(obstacle):
+                if dy > 0:  # вниз
+                    self.rect.bottom = obstacle.top
+                elif dy < 0:  # вверх
+                    self.rect.top = obstacle.bottom
+
+        # Ограничение перемещения в пределах карты
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > MAP_WIDTH:
+            self.rect.right = MAP_WIDTH
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > MAP_HEIGHT:
+            self.rect.bottom = MAP_HEIGHT
