@@ -119,6 +119,7 @@ while True:
         pygame.draw.rect(screen, (255, 0, 0), enemy.hitbox.move(-offset), 2)
 
     screen.blit(player.image, player.rect.topleft - offset)
+    player.draw_hitbox(screen, offset)
 
     # Прицел
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
@@ -149,7 +150,6 @@ while True:
 
     # Рисуем игрока в центре миникарты
     pygame.draw.circle(screen, (0, 255, 0), (mini_map_rect.centerx, mini_map_rect.centery), 3)
-    pygame.draw.rect(screen, (0, 255, 0), player.hitbox, 2)  # Зелёный хитбокс
 
     # Рисуем врагов
     for enemy in enemies:

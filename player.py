@@ -11,9 +11,7 @@ class Player(pygame.sprite.Sprite):
         self.original_image = pygame.image.load('assets/player.png').convert_alpha()
         self.image = self.original_image
         self.rect = self.image.get_rect(center=pos)
-        self.collision_rect = pygame.Rect(
-            self.rect.x + 10, self.rect.y + 10, self.rect.width - 20, self.rect.height - 20
-        )
+
         self.speed = PLAYER_SPEED
         self.health = 100
         self.ammo = 20
@@ -28,16 +26,24 @@ class Player(pygame.sprite.Sprite):
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
         self.update_hitbox()
 
+        # Хитбокс (рабочая коллизия)
+        self.hitbox_width = int(self.rect.width * 0.35)  # можно настраивать
+        self.hitbox_height = int(self.rect.height * 0.55)
+        self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
+        self.update_hitbox()
+
     def update(self, keys, mouse_pos, bullets_group, obstacles):
         dx, dy = self.handle_movement(keys)
         self.rotate(mouse_pos)
         self.handle_shooting(mouse_pos, bullets_group)
         self.move_and_collide(dx, dy, obstacles)
         self.update_hitbox()
-        self.collision_rect.topleft = self.rect.topleft
 
     def update_hitbox(self):
         self.hitbox.center = self.rect.center
+
+    def draw_hitbox(self, screen, offset):
+        pygame.draw.rect(screen, (255, 0, 0), self.hitbox.move(-offset), 2)
 
     def handle_movement(self, keys):
         dx = dy = 0
@@ -67,32 +73,30 @@ class Player(pygame.sprite.Sprite):
             text = self.reload_font.render("Reloading...", True, (255, 0, 0))
             screen.blit(text, (10, 70))
 
-    def draw_collision_rect(self, screen):
-        pygame.draw.rect(screen, (255, 0, 0), self.collision_rect, 2)
-
     def move_and_collide(self, dx, dy, obstacles):
-        self.rect.x += dx
-        self.update_hitbox()
+        # Движение по оси X
+        self.hitbox.x += dx
         for obstacle in obstacles:
             if self.hitbox.colliderect(obstacle):
                 if dx > 0:
-                    self.rect.right = obstacle.left
+                    self.hitbox.right = obstacle.left
                 elif dx < 0:
-                    self.rect.left = obstacle.right
-                self.update_hitbox()
+                    self.hitbox.left = obstacle.right
 
-        self.rect.y += dy
-        self.update_hitbox()
+        # Движение по оси Y
+        self.hitbox.y += dy
         for obstacle in obstacles:
             if self.hitbox.colliderect(obstacle):
                 if dy > 0:
-                    self.rect.bottom = obstacle.top
+                    self.hitbox.bottom = obstacle.top
                 elif dy < 0:
-                    self.rect.top = obstacle.bottom
-                self.update_hitbox()
+                    self.hitbox.top = obstacle.bottom
 
-        if self.rect.left < 0: self.rect.left = 0
-        if self.rect.right > MAP_WIDTH: self.rect.right = MAP_WIDTH
-        if self.rect.top < 0: self.rect.top = 0
-        if self.rect.bottom > MAP_HEIGHT: self.rect.bottom = MAP_HEIGHT
-        self.update_hitbox()
+        # Границы карты
+        if self.hitbox.left < 0: self.hitbox.left = 0
+        if self.hitbox.right > MAP_WIDTH: self.hitbox.right = MAP_WIDTH
+        if self.hitbox.top < 0: self.hitbox.top = 0
+        if self.hitbox.bottom > MAP_HEIGHT: self.hitbox.bottom = MAP_HEIGHT
+
+        # Обновляем rect после перемещения hitbox
+        self.rect.center = self.hitbox.center
