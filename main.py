@@ -44,6 +44,7 @@ while True:
     dt = clock.tick(FPS)
     keys = pygame.key.get_pressed()
     mouse_pos = pygame.mouse.get_pos()
+    enemies.update(player.rect, obstacles)
 
     # События
     for event in pygame.event.get():
@@ -58,6 +59,10 @@ while True:
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
                 player.shooting = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_e:
+                # Создать нового врага рядом с игроком (например, сверху)
+                new_enemy = Enemy((player.rect.centerx, player.rect.centery - 100))
 
     # Камера
     offset = pygame.Vector2(player.rect.center) - pygame.Vector2(WIDTH // 2, HEIGHT // 2)
@@ -111,6 +116,7 @@ while True:
 
     for enemy in enemies:
         screen.blit(enemy.image, enemy.rect.topleft - offset)
+        pygame.draw.rect(screen, (255, 0, 0), enemy.hitbox.move(-offset), 2)
 
     screen.blit(player.image, player.rect.topleft - offset)
 
@@ -143,6 +149,7 @@ while True:
 
     # Рисуем игрока в центре миникарты
     pygame.draw.circle(screen, (0, 255, 0), (mini_map_rect.centerx, mini_map_rect.centery), 3)
+    pygame.draw.rect(screen, (0, 255, 0), player.hitbox, 2)  # Зелёный хитбокс
 
     # Рисуем врагов
     for enemy in enemies:

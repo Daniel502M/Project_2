@@ -10,83 +10,62 @@ class Enemy(pygame.sprite.Sprite):
         enemy_image_original = pygame.image.load("assets/enemy.png").convert_alpha()
         self.original_image = pygame.transform.scale(enemy_image_original, (60, 60))
         self.image = self.original_image
-        self.rect = self.image.get_rect(center=(random_spawn_position()))
+        self.rect = self.image.get_rect(center=random_spawn_position())
         self.speed = ENEMY_SPEED
         self.health = 25
+
+        # ==== НАСТРАИВАЕМЫЙ ХИТБОКС ====
+        self.hitbox_width = int(self.rect.width * 0.3)
+        self.hitbox_height = int(self.rect.height * 0.5)
+        self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
+        self.update_hitbox()
 
     def update(self, player_rect, obstacles):
         dx = player_rect.centerx - self.rect.centerx
         dy = player_rect.centery - self.rect.centery
         dist = math.hypot(dx, dy)
-
         if dist == 0:
-            return  # чтобы избежать деления на ноль
+            return
 
-        dx, dy = dx / dist, dy / dist  # нормализация
-        dx *= self.speed
-        dy *= self.speed
+        dx = dx / dist * self.speed
+        dy = dy / dist * self.speed
 
-        # Перемещение по X
+        # === Движение по X с проверкой ===
+        original_x = self.rect.x
         self.rect.x += dx
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle):
-                if dx > 0:
-                    self.rect.right = obstacle.left
-                elif dx < 0:
-                    self.rect.left = obstacle.right
+        self.update_hitbox()
+        collision_x = any(self.hitbox.colliderect(obstacle) for obstacle in obstacles)
+        if collision_x:
+            self.rect.x = original_x
+            self.update_hitbox()
 
-        # Перемещение по Y
+        # === Движение по Y с проверкой ===
+        original_y = self.rect.y
         self.rect.y += dy
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle):
-                if dy > 0:
-                    self.rect.bottom = obstacle.top
-                elif dy < 0:
-                    self.rect.top = obstacle.bottom
+        self.update_hitbox()
+        collision_y = any(self.hitbox.colliderect(obstacle) for obstacle in obstacles)
+        if collision_y:
+            self.rect.y = original_y
+            self.update_hitbox()
 
-        # Ограничение в пределах карты
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > MAP_WIDTH:
-            self.rect.right = MAP_WIDTH
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > MAP_HEIGHT:
-            self.rect.bottom = MAP_HEIGHT
+        # === Ограничения карты ===
+        if self.rect.left < 0: self.rect.left = 0
+        if self.rect.right > MAP_WIDTH: self.rect.right = MAP_WIDTH
+        if self.rect.top < 0: self.rect.top = 0
+        if self.rect.bottom > MAP_HEIGHT: self.rect.bottom = MAP_HEIGHT
+        self.update_hitbox()
 
+        # === Поворот изображения к игроку ===
         direction = pygame.Vector2(player_rect.center) - pygame.Vector2(self.rect.center)
-
-        # Поворот
         angle = math.degrees(-math.atan2(direction.y, direction.x)) + 90
         self.image = pygame.transform.rotate(self.original_image, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
-    def move_and_collide(self, dx, dy, obstacles):
-        self.rect.x += int(dx)
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle):
-                if dx > 0:
-                    self.rect.right = obstacle.left
-                elif dx < 0:
-                    self.rect.left = obstacle.right
+    def update_hitbox(self):
+        self.hitbox.center = self.rect.center
 
-        self.rect.y += int(dy)
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle):
-                if dy > 0:
-                    self.rect.bottom = obstacle.top
-                elif dy < 0:
-                    self.rect.top = obstacle.bottom
-
-        # Ограничи врага границами карты
-        if self.rect.left < 0:
-            self.rect.left = 0
-        if self.rect.right > MAP_WIDTH:
-            self.rect.right = MAP_WIDTH
-        if self.rect.top < 0:
-            self.rect.top = 0
-        if self.rect.bottom > MAP_HEIGHT:
-            self.rect.bottom = MAP_HEIGHT
+    def draw_collision_rect(self, screen):
+        pygame.draw.rect(screen, (255, 0, 0), self.hitbox, 2)  # Только красный хитбокс
 
 
 def random_spawn_position():
