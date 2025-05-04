@@ -72,7 +72,7 @@ while True:
 
     # Обновления
     player.update(keys, mouse_world_pos, bullets, obstacles)
-    bullets.update()
+    bullets.update(obstacles)
     enemies.update(player, obstacles)
     pickups.update()
 
@@ -80,6 +80,10 @@ while True:
     for bullet in bullets:
         hit_list = pygame.sprite.spritecollide(bullet, enemies, False)
         for enemy in hit_list:
+            line_blocked = any(obs.clipline(bullet.rect.center, enemy.rect.center) for obs in obstacles)
+            if line_blocked:
+                continue  # Не наносим урон — между пулей и врагом стена
+
             enemy.health -= 25
             bullet.kill()
             if enemy.health <= 0:
@@ -87,12 +91,17 @@ while True:
                 enemy.kill()
                 kills += 1
 
-    if pygame.sprite.spritecollide(player, enemies, False):
-        player.health -= 1
-        if player.health <= 0:
-            print("Game Over")
-            pygame.quit()
-            sys.exit()
+    for enemy in enemies:
+        if player.hitbox.colliderect(enemy.hitbox):
+            # Проверяем, нет ли стены между игроком и врагом
+            blocked = False
+            for obs in obstacles:
+                if obs.clipline(player.hitbox.center, enemy.hitbox.center):
+                    blocked = True
+                    break
+            if not blocked:
+                player.health -= 1
+                break  # Урон только от одного врага за кадр
 
     pickup_hits = pygame.sprite.spritecollide(player, pickups, True)
     for pickup in pickup_hits:
@@ -105,7 +114,7 @@ while True:
     tile_map.draw(screen, offset)
 
     for rect in obstacles:
-        pygame.draw.rect(screen, (255, 0, 0), rect.move(-offset), 2)  # Красные рамки
+        pygame.draw.rect(screen, (0, 0, 255), rect.move(-offset), 2)  # Красные рамки
 
     # Рисуем все объекты со сдвигом offset
     for pickup in pickups:
