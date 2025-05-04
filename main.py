@@ -44,7 +44,7 @@ while True:
     dt = clock.tick(FPS)
     keys = pygame.key.get_pressed()
     mouse_pos = pygame.mouse.get_pos()
-    enemies.update(player.rect, obstacles)
+    enemies.update(player, obstacles)
 
     # События
     for event in pygame.event.get():
@@ -73,7 +73,7 @@ while True:
     # Обновления
     player.update(keys, mouse_world_pos, bullets, obstacles)
     bullets.update()
-    enemies.update(player.rect, obstacles)
+    enemies.update(player, obstacles)
     pickups.update()
 
     # Столкновения
