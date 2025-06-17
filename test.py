@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw
 
 # Открытие изображения
-image_path = "C:/Users/Victus/Desktop/Project_2/Maps/Sprite_for_Cart_Game.png"
+image_path = "C:/Users/Victus/Desktop/Project_2/Maps/Laboratory_Cart/Sprite_for_Cart_Game.png"
 image = Image.open(image_path)
 draw = ImageDraw.Draw(image)
 
@@ -22,3 +22,40 @@ grid_image_path = "C:/Users/Victus/Desktop/Project_2/Maps/Sprite_with_grid.png"
 image.save(grid_image_path)
 
 grid_image_path
+
+
+
+
+
+
+# 3
+# 4
+# 5
+# 6
+# 7
+# 8
+# 9
+# 10
+# 11
+# 12
+# 13
+# 14
+# 15
+# 16
+# 17
+# 18
+# 19
+# 20
+# 21
+# 22
+# 23
+# 24
+# 25
+# 26
+# 27
+# 28
+# 29
+# 30
+# 31
+# 32
+# ...

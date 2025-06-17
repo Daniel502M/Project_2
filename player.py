@@ -12,6 +12,7 @@ class Player(pygame.sprite.Sprite):
 
         self.speed = PLAYER_SPEED
         self.health = 100
+        self.alive = True
         self.ammo = 20
         self.shooting = False
         self.shoot_cooldown = 250
@@ -23,6 +24,18 @@ class Player(pygame.sprite.Sprite):
         self.hitbox_height = int(self.rect.height * 0.55)
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
         self.update_hitbox()
+
+    def take_damage(self, amount):
+        if self.alive:
+            self.health -= amount
+            print(f"Health: {self.health}")
+            if self.health <= 0:
+                self.die()
+
+    def die(self):
+        self.alive = False
+        print("Player has died!")
+        # Можешь добавить проигрывание анимации, звук смерти и т.д.
 
     def update(self, keys, mouse_pos, bullets_group, obstacles):
         dx, dy = self.handle_movement(keys)

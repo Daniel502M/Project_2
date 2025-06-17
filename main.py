@@ -9,21 +9,36 @@ from bullet import Bullet
 from pickup import AmmoPickup
 from map_loader import TileMap
 
-
 pygame.init()
+pygame.mixer.init()  # 🎵 Инициализация микшера
+
+# # 🎵 Загрузка и запуск фоновой музыки
+# pygame.mixer.music.load("Zombie_Games_Sound.mp3")
+# pygame.mixer.music.set_volume(0.3)
+# pygame.mixer.music.play(-1)
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.mouse.set_visible(False)
 
-tile_map = TileMap("Maps/Cart_Game.tmx")
-obstacles = tile_map.get_collision_rects()
+tile_map = TileMap("Maps/Laboratory_Cart/Laboratory_Cart..tmx")
+static_obstacles, door_obstacles = tile_map.get_collision_rects()
+object_obstacles = tile_map.get_object_collision_rects()
+static_obstacles += object_obstacles
+
+# Эти препятствия учитываются при коллизиях
+active_obstacles = static_obstacles.copy()
 
 # Прицел
 crosshair_surface = pygame.Surface((40, 40), pygame.SRCALPHA)
 pygame.draw.circle(crosshair_surface, (255, 0, 0), (20, 20), 15, 2)
 
 # Игрок и группы
-player = Player((WIDTH // 2, HEIGHT // 2))
+map_pixel_width = tile_map.tmx_data.width * tile_map.tmx_data.tilewidth
+map_pixel_height = tile_map.tmx_data.height * tile_map.tmx_data.tileheight
+
+player = Player((map_pixel_width // 2, map_pixel_height - 100))
+
 player_group = pygame.sprite.GroupSingle(player)
 bullets = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
@@ -36,7 +51,7 @@ start_time = pygame.time.get_ticks()
 # Спавн врагов
 SPAWN_EVENT = pygame.USEREVENT + 1
 pygame.time.set_timer(SPAWN_EVENT, 2000)
-
+enemy = Enemy(player.rect, WIDTH, HEIGHT)
 font = pygame.font.SysFont(None, 30)
 
 # Игровой цикл
@@ -44,15 +59,30 @@ while True:
     dt = clock.tick(FPS)
     keys = pygame.key.get_pressed()
     mouse_pos = pygame.mouse.get_pos()
-    enemies.update(player, obstacles)
+    enemies.update(player, active_obstacles)
+    delta_time = clock.tick(60) / 1000
+
+    interacting_door = None
+    for door in door_obstacles:
+        if player.rect.colliderect(door["rect"]):
+            interacting_door = door
+            break
+
+    # Управление дверьми
+    if interacting_door:
+        active_obstacles = static_obstacles.copy()  # Убираем эту дверь
+        # Можете хранить `open_doors = set()` и добавлять `interacting_door["id"]`
+    else:
+        active_obstacles = static_obstacles + [door["rect"] for door in door_obstacles]
 
     # События
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            running = False
             pygame.quit()
             sys.exit()
         if event.type == SPAWN_EVENT:
-            enemies.add(Enemy(player.rect.center))
+            enemies.add(Enemy(player.rect, WIDTH, HEIGHT))
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 player.shooting = True
@@ -71,16 +101,16 @@ while True:
     mouse_world_pos = (mouse_pos[0] + offset.x, mouse_pos[1] + offset.y)
 
     # Обновления
-    player.update(keys, mouse_world_pos, bullets, obstacles)
-    bullets.update(obstacles)
-    enemies.update(player, obstacles)
+    player.update(keys, mouse_world_pos, bullets, active_obstacles)
+    bullets.update(active_obstacles)
+    enemies.update(player, active_obstacles)
     pickups.update()
 
     # Столкновения
     for bullet in bullets:
         hit_list = pygame.sprite.spritecollide(bullet, enemies, False)
         for enemy in hit_list:
-            line_blocked = any(obs.clipline(bullet.rect.center, enemy.rect.center) for obs in obstacles)
+            line_blocked = any(obs.clipline(bullet.rect.center, enemy.rect.center) for obs in active_obstacles)
             if line_blocked:
                 continue  # Не наносим урон — между пулей и врагом стена
 
@@ -95,12 +125,12 @@ while True:
         if player.hitbox.colliderect(enemy.hitbox):
             # Проверяем, нет ли стены между игроком и врагом
             blocked = False
-            for obs in obstacles:
+            for obs in active_obstacles:
                 if obs.clipline(player.hitbox.center, enemy.hitbox.center):
                     blocked = True
                     break
             if not blocked:
-                player.health -= 1
+                player.take_damage(1)
                 break  # Урон только от одного врага за кадр
 
     pickup_hits = pygame.sprite.spritecollide(player, pickups, True)
@@ -113,8 +143,12 @@ while True:
     # Рисуем карту со смещением камеры
     tile_map.draw(screen, offset)
 
-    for rect in obstacles:
-        pygame.draw.rect(screen, (0, 0, 255), rect.move(-offset), 2)  # Красные рамки
+    # Отрисовка коллизий стен и дверей:
+    for rect in active_obstacles:
+        pygame.draw.rect(screen, (0, 0, 255), rect.move(-offset), 2)  # Синие рамки
+
+    # for rect in object_obstacles:
+    #     pygame.draw.rect(screen, (255, 255, 0), rect.move(-offset), 2)  # Желтые рамки
 
     # Рисуем все объекты со сдвигом offset
     for pickup in pickups:
@@ -125,10 +159,14 @@ while True:
 
     for enemy in enemies:
         screen.blit(enemy.image, enemy.rect.topleft - offset)
-        pygame.draw.rect(screen, (255, 0, 0), enemy.hitbox.move(-offset), 2)
+
+    # Отрисовка хитбокса врага:
+    # pygame.draw.rect(screen, (255, 0, 0), enemy.hitbox.move(-offset), 2)
 
     screen.blit(player.image, player.rect.topleft - offset)
-    player.draw_hitbox(screen, offset)
+
+    # Отрисовка хитбокса игрока:
+    # player.draw_hitbox(screen, offset)
 
     # Прицел
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
@@ -172,5 +210,19 @@ while True:
         # Ограничение отрисовки врагов только в пределах миникарты
         if mini_map_rect.collidepoint(map_x, map_y):
             pygame.draw.circle(screen, (255, 0, 0), (map_x, map_y), 2)
+
+    if player.alive:
+        player.update(keys, mouse_world_pos, bullets, active_obstacles)
+        bullets.update(active_obstacles)
+        enemies.update(player, active_obstacles)
+        pickups.update()
+    else:
+        game_over_font = pygame.font.SysFont(None, 72)
+        text = game_over_font.render("GAME OVER", True, (255, 0, 0))
+        screen.blit(text, (WIDTH // 2 - 150, HEIGHT // 2 - 36))
+        pygame.display.flip()
+        pygame.time.delay(3000)
+        pygame.quit()
+        sys.exit()
 
     pygame.display.update()
