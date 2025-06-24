@@ -26,16 +26,16 @@ class Player(pygame.sprite.Sprite):
         self.update_hitbox()
 
     def take_damage(self, amount):
-        if self.alive:
-            self.health -= amount
-            print(f"Health: {self.health}")
-            if self.health <= 0:
-                self.die()
+        self.health -= amount
+        if self.health < 0:
+            self.health = 0
+        print(f"Игрок получил урон! Текущее здоровье: {self.health}")
+        if self.health == 0:
+            self.die()
 
     def die(self):
         self.alive = False
         print("Player has died!")
-        # Можешь добавить проигрывание анимации, звук смерти и т.д.
 
     def update(self, keys, mouse_pos, bullets_group, obstacles):
         dx, dy = self.handle_movement(keys)
@@ -51,12 +51,12 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(screen, (255, 0, 0), self.hitbox.move(-offset), 2)
 
     def draw_health(self, screen):
-        color = (0, 255, 0) if self.health > 50 else (255, 255, 0) if self.health > 25 else (255, 0, 0)
+        color = (0,255,0) if self.health>50 else (255,255,0) if self.health>25 else (255,0,0)
         text = self.health_font.render(f"Health: {self.health}", True, color)
-        screen.blit(text, (10, 10))
+        screen.blit(text, (10,10))
 
     def handle_movement(self, keys):
-        dx = dy = 0
+        dx=dy=0
         if keys[pygame.K_w]: dy -= self.speed
         if keys[pygame.K_s]: dy += self.speed
         if keys[pygame.K_a]: dx -= self.speed
@@ -64,7 +64,8 @@ class Player(pygame.sprite.Sprite):
         return dx, dy
 
     def rotate(self, mouse_pos):
-        rel_x, rel_y = mouse_pos[0] - self.rect.centerx, mouse_pos[1] - self.rect.centery
+        rel_x = mouse_pos[0] - self.rect.centerx
+        rel_y = mouse_pos[1] - self.rect.centery
         angle = math.degrees(-math.atan2(rel_y, rel_x)) + 282
         self.image = pygame.transform.rotate(self.original_image, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
@@ -72,7 +73,7 @@ class Player(pygame.sprite.Sprite):
     def handle_shooting(self, mouse_pos, bullets_group):
         now = pygame.time.get_ticks()
         if self.shooting and now - self.last_shot > self.shoot_cooldown and self.ammo > 0:
-            from bullet import Bullet  # Импорт внутри, чтобы избежать циклического импорта
+            from bullet import Bullet  # импорт внутри, чтобы избежать цикличности
             bullet = Bullet(self.rect.center, mouse_pos)
             bullets_group.add(bullet)
             self.ammo -= 1
@@ -107,9 +108,3 @@ class Player(pygame.sprite.Sprite):
         if self.hitbox.bottom > MAP_HEIGHT: self.hitbox.bottom = MAP_HEIGHT
 
         self.rect.center = self.hitbox.center
-
-    def take_damage(self, amount):
-        self.health -= amount
-        if self.health < 0:
-            self.health = 0
-        print(f"Игрок получил урон! Текущее здоровье: {self.health}")

@@ -10,20 +10,42 @@ class TileMap:
         self.width = self.tmx_data.width * self.tile_width
         self.height = self.tmx_data.height * self.tile_height
 
-    def draw(self, surface, offset=pygame.Vector2(0, 0)):
+    def draw(self, surface, offset=pygame.Vector2(0, 0), skip_door_ids=None):
+        """
+        Отрисовывает карту. Если указан skip_door_ids — не рисует двери с этими id.
+        """
+        if skip_door_ids is None:
+            skip_door_ids = set()
+
         for layer in self.tmx_data.visible_layers:
             if isinstance(layer, pytmx.TiledTileLayer):
                 for x, y, gid in layer:
+                    if gid == 0:
+                        continue
+
+                    pos_x = x * self.tile_width - offset.x
+                    pos_y = y * self.tile_height - offset.y
+
+                    # Пропускаем закрытую дверь, если она была заменена открытой
+                    door_id = f"{x}_{y}"
+                    if door_id in skip_door_ids:
+                        continue
+
                     tile = self.tmx_data.get_tile_image_by_gid(gid)
                     if tile:
-                        pos_x = x * self.tile_width - offset.x
-                        pos_y = y * self.tile_height - offset.y
                         surface.blit(tile, (pos_x, pos_y))
 
     def get_collision_rects(self, layer_name="Стены"):
         walls = []
         doors = []
         layer = self.tmx_data.get_layer_by_name(layer_name)
+
+        open_gids = {
+            15: 68,  # Верхняя
+            20: 68,  # Нижняя
+            12: 70,  # Правая
+            13: 70,  # Левая
+        }
 
         for x, y, gid in layer:
             if gid == 0:
@@ -33,73 +55,84 @@ class TileMap:
             tile_y = y * self.tile_height
             w = self.tile_width
             h = self.tile_height
-
             rect = None
 
-            if gid == 15:  # Верхняя дверь
-                rect = pygame.Rect(tile_x, tile_y, w, 13)
-                doors.append({"id": f"top_door_{x}_{y}", "rect": rect})
+            if gid in open_gids:
+                if gid == 15:  # Верхняя дверь
+                    rect = pygame.Rect(tile_x, tile_y, w, 13)
+                    door_id = f"{x}_{y}"
+                elif gid == 20:  # Нижняя дверь
+                    rect = pygame.Rect(tile_x, tile_y + h - 13, w, 13)
+                    door_id = f"{x}_{y}"
+                elif gid == 12:  # Правая дверь
+                    rect = pygame.Rect(tile_x + w - 13, tile_y, 13, h)
+                    door_id = f"{x}_{y}"
+                elif gid == 13:  # Левая дверь
+                    rect = pygame.Rect(tile_x, tile_y, 13, h)
+                    door_id = f"{x}_{y}"
+
+                doors.append({
+                    "id": door_id,
+                    "rect": rect,
+                    "pos": (x, y),
+                    "gid": gid,
+                    "open_gid": open_gids[gid],
+                    "is_open": False
+                })
                 continue
 
-            elif gid == 20:  # Нижняя дверь
-                rect = pygame.Rect(tile_x, tile_y + h - 13, w, 13)
-                doors.append({"id": f"bottom_door_{x}_{y}", "rect": rect})
-                continue
-            elif gid == 12:  # Правая дверь
+            if gid in {11, 14, 18}:
                 rect = pygame.Rect(tile_x + w - 13, tile_y, 13, h)
-                doors.append({"id": f"bottom_door_{x}_{y}", "rect": rect})
-                continue
-            elif gid == 13:  # Левая дверь
+            elif gid in {10, 16, 24, 31}:
                 rect = pygame.Rect(tile_x, tile_y, 13, h)
-                doors.append({"id": f"bottom_door_{x}_{y}", "rect": rect})
-                continue
-
-            elif gid == 11 or gid == 14 or gid == 18:  # Только правая сторона
-                rect = pygame.Rect(tile_x + w - 13, tile_y, 13, h)
-
-            elif gid == 10 or gid == 16 or gid == 24 or gid == 31:  # Только левая сторона
-                rect = pygame.Rect(tile_x, tile_y, 13, h)
-
-            elif gid == 4:  # Только верхняя сторона
+            elif gid == 4:
                 rect = pygame.Rect(tile_x, tile_y, w, 13)
-
-            elif gid == 19 or gid == 23:  # Только нижняя сторона
+            elif gid in {19, 23}:
                 rect = pygame.Rect(tile_x, tile_y + h - 13, w, 13)
-
-            elif gid == 6 or gid == 7 or gid == 9 or gid == 17:  # Верхняя и правая
+            elif gid in {6, 7, 9, 17}:
                 walls.append(pygame.Rect(tile_x + w - 13, tile_y, 13, h))
                 walls.append(pygame.Rect(tile_x, tile_y, w, 13))
                 continue
-
-            elif gid == 21 or gid == 27 or gid == 29 or gid == 32:  # Нижняя и правая
+            elif gid in {21, 27, 29, 32}:
                 walls.append(pygame.Rect(tile_x + w - 13, tile_y, 13, h))
                 walls.append(pygame.Rect(tile_x, tile_y + h - 13, w, 13))
                 continue
-            elif gid == 3 or gid == 5 or gid == 8 or gid == 25:  # Верхняя и левая
+            elif gid in {3, 5, 8, 25}:
                 walls.append(pygame.Rect(tile_x, tile_y, 13, h))
                 walls.append(pygame.Rect(tile_x, tile_y, w, 13))
                 continue
-
-            elif gid == 22 or gid == 26 or gid == 28 or gid == 30:  # Нижняя и левая
+            elif gid in {22, 26, 28, 30}:
                 walls.append(pygame.Rect(tile_x, tile_y, 13, h))
                 walls.append(pygame.Rect(tile_x, tile_y + h - 13, w, 13))
                 continue
             else:
                 rect = pygame.Rect(tile_x, tile_y, w, h)
-                # pass
+
             if rect:
                 walls.append(rect)
 
-            # print(f"Tile at ({x}, {y}) has GID: {gid}")
-
         return walls, doors
 
+    def get_closed_door_image(self, door):
+        """Возвращает изображение закрытой двери по GID."""
+        return self.tmx_data.get_tile_image_by_gid(door["gid"])
+
     def get_object_collision_rects(self, layer_name="Объекты"):
-        """
-        Возвращает список прямоугольников коллизий для объектов с учётом их GID.
-        Размеры коллизий подбираются индивидуально для каждого GID.
-        """
         object_rects = []
+        bullet_blocking_rects = []
+
+        bullet_passable_gids = {49, 38, 43, 41, 50, 33, 34, 35, 59, 42, 54, 51, 52, 65,
+                                46, 48, 56, 47, 61, 55, 66, 67, 53, 60, 44, 39, 40}
+
+        try:
+            layer = self.tmx_data.get_layer_by_name(layer_name)
+        except Exception as e:
+            print(f"[❌] Ошибка: слой '{layer_name}' не найден — {e}")
+            return [], []
+
+        if not isinstance(layer, pytmx.TiledTileLayer):
+            print(f"[❌] Слой '{layer_name}' не является тайловым слоем!")
+            return [], []
 
         # Индивидуальные размеры объектов по GID
         gid_hitboxes = {
@@ -141,40 +174,21 @@ class TileMap:
             # Добавляй нужные GID и размеры (ширина, высота)
         }
 
-        try:
-            layer = self.tmx_data.get_layer_by_name(layer_name)
-        except Exception as e:
-            print(f"[❌] Ошибка: слой '{layer_name}' не найден — {e}")
-            return []
-
-        if not isinstance(layer, pytmx.TiledTileLayer):
-            print(f"[❌] Слой '{layer_name}' не является тайловым слоем!")
-            return []
-
         for x, y, gid in layer:
             if gid == 0:
                 continue
-            # print(f"Tile at ({x},{y}) has GID: {gid}")
 
             tile_x = x * self.tile_width
             tile_y = y * self.tile_height
 
             if gid in gid_hitboxes:
-                w, h, offset_x, offset_y = gid_hitboxes[gid]
-                rect = pygame.Rect(
-                    tile_x + offset_x,
-                    tile_y + self.tile_height - h + offset_y,
-                    w,
-                    h
-                )
+                w, h, ox, oy = gid_hitboxes[gid]
+                rect = pygame.Rect(tile_x + ox, tile_y + self.tile_height - h + oy, w, h)
             else:
-                w = self.tile_width
-                h = self.tile_height
-                rect = pygame.Rect(tile_x, tile_y, w, h)
+                rect = pygame.Rect(tile_x, tile_y, self.tile_width, self.tile_height)
 
             object_rects.append(rect)
+            if gid not in bullet_passable_gids:
+                bullet_blocking_rects.append(rect)
 
-            # print(f"GID: {gid} → Rect({rect})")
-
-        print(f"[✅] Объектов в слое '{layer_name}': {len(object_rects)}")
-        return object_rects
+        return object_rects, bullet_blocking_rects
