@@ -37,10 +37,10 @@ class Player(pygame.sprite.Sprite):
         self.alive = False
         print("Player has died!")
 
-    def update(self, keys, mouse_pos, bullets_group, obstacles):
+    def update(self, keys, mouse_pos, bullets_group, obstacles, shoot_sound=None):
         dx, dy = self.handle_movement(keys)
         self.rotate(mouse_pos)
-        self.handle_shooting(mouse_pos, bullets_group)
+        self.handle_shooting(mouse_pos, bullets_group, shoot_sound)
         self.move_and_collide(dx, dy, obstacles)
         self.update_hitbox()
 
@@ -51,12 +51,12 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(screen, (255, 0, 0), self.hitbox.move(-offset), 2)
 
     def draw_health(self, screen):
-        color = (0,255,0) if self.health>50 else (255,255,0) if self.health>25 else (255,0,0)
+        color = (0, 255, 0) if self.health > 50 else (255, 255, 0) if self.health > 25 else (255, 0, 0)
         text = self.health_font.render(f"Health: {self.health}", True, color)
-        screen.blit(text, (10,10))
+        screen.blit(text, (10, 10))
 
     def handle_movement(self, keys):
-        dx=dy=0
+        dx = dy = 0
         if keys[pygame.K_w]: dy -= self.speed
         if keys[pygame.K_s]: dy += self.speed
         if keys[pygame.K_a]: dx -= self.speed
@@ -70,7 +70,7 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.original_image, angle)
         self.rect = self.image.get_rect(center=self.rect.center)
 
-    def handle_shooting(self, mouse_pos, bullets_group):
+    def handle_shooting(self, mouse_pos, bullets_group, shoot_sound=None):
         now = pygame.time.get_ticks()
         if self.shooting and now - self.last_shot > self.shoot_cooldown and self.ammo > 0:
             from bullet import Bullet  # импорт внутри, чтобы избежать цикличности
@@ -78,6 +78,8 @@ class Player(pygame.sprite.Sprite):
             bullets_group.add(bullet)
             self.ammo -= 1
             self.last_shot = now
+            if shoot_sound:
+                shoot_sound.play()
 
     def draw_reload_indicator(self, screen):
         now = pygame.time.get_ticks()
