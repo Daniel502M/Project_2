@@ -25,6 +25,20 @@ class Player(pygame.sprite.Sprite):
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
         self.update_hitbox()
 
+        self.health_images = {
+            0: pygame.image.load('assets/Hp_player/0_hp.png').convert_alpha(),
+            10: pygame.image.load('assets/Hp_player/10_hp.png').convert_alpha(),
+            20: pygame.image.load('assets/Hp_player/20_hp.png').convert_alpha(),
+            30: pygame.image.load('assets/Hp_player/30_hp.png').convert_alpha(),
+            40: pygame.image.load('assets/Hp_player/40_hp.png').convert_alpha(),
+            50: pygame.image.load('assets/Hp_player/50_hp.png').convert_alpha(),
+            60: pygame.image.load('assets/Hp_player/60_hp.png').convert_alpha(),
+            70: pygame.image.load('assets/Hp_player/70_hp.png').convert_alpha(),
+            80: pygame.image.load('assets/Hp_player/80_hp.png').convert_alpha(),
+            90: pygame.image.load('assets/Hp_player/90_hp.png').convert_alpha(),
+            100: pygame.image.load('assets/Hp_player/100_hp.png').convert_alpha()
+        }
+
     def take_damage(self, amount):
         self.health -= amount
         if self.health < 0:
@@ -51,9 +65,16 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(screen, (255, 0, 0), self.hitbox.move(-offset), 2)
 
     def draw_health(self, screen):
-        color = (0, 255, 0) if self.health > 50 else (255, 255, 0) if self.health > 25 else (255, 0, 0)
-        text = self.health_font.render(f"Health: {self.health}", True, color)
-        screen.blit(text, (10, 10))
+        # Сортируем ключи словаря с изображениями по убыванию, чтобы сначала проверять наибольшие значения здоровья
+        sorted_healths = sorted(self.health_images.keys(), reverse=True)
+
+        for hp in sorted_healths:
+            if self.health >= hp:
+                screen.blit(self.health_images[hp], (10, 40))
+                break
+        else:
+            # Если здоровье меньше минимального доступного значения, отображаем изображение для 0 HP
+            screen.blit(self.health_images[0], (10, 10))
 
     def handle_movement(self, keys):
         dx = dy = 0

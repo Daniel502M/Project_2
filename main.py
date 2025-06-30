@@ -7,6 +7,11 @@ from enemy import Enemy, RangedEnemy, EnemyBullet
 from bullet import Bullet
 from pickup import AmmoPickup
 from map_loader import TileMap
+from menu import show_menu
+
+if __name__ == "__main__":
+    if not show_menu():
+        sys.exit()
 
 pygame.init()
 pygame.mixer.init()
@@ -19,6 +24,8 @@ pygame.mixer.music.play(-1)
 # Загрузка звуков
 player_shoot_sound = pygame.mixer.Sound("assets/sounds/player_shoot.mp3")
 enemy_shoot_sound = pygame.mixer.Sound("assets/sounds/enemy_shoot.mp3")
+enemy_death_sound = pygame.mixer.Sound("assets/sounds/enemy_death.mp3")
+enemy_death_sound.set_volume(0.2)  # можешь настроить по вкусу
 player_shoot_sound.set_volume(0.3)
 enemy_shoot_sound.set_volume(0.2)
 
@@ -84,9 +91,9 @@ while True:
         if event.type == SPAWN_EVENT:
             if len(enemies) < 50:
                 if random.random() < 0.2:
-                    enemies.add(RangedEnemy(player.rect, WIDTH, HEIGHT))
+                    enemies.add(RangedEnemy(player.rect, WIDTH, HEIGHT, static_obstacles))
                 else:
-                    enemies.add(Enemy(player.rect, WIDTH, HEIGHT))
+                    enemies.add(Enemy(player.rect, WIDTH, HEIGHT, static_obstacles))
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             player.shooting = True
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -120,7 +127,9 @@ while True:
     ]
 
     player.update(keys, mouse_world, bullets, active_obstacles, shoot_sound=player_shoot_sound)
-    bullets.update(bullet_blocking)
+    player.draw_health(screen)
+    pygame.display.update()
+    bullets.update(dt, bullet_blocking, enemies)
     pickups.update()
     enemy_bullets.update(dt, bullet_blocking, player)
 
@@ -139,6 +148,7 @@ while True:
             bullet.kill()
             if enemy.health <= 0:
                 pickups.add(AmmoPickup(enemy.rect.center))
+                enemy_death_sound.play()
                 enemy.kill()
                 kills += 1
 
@@ -179,13 +189,13 @@ while True:
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
 
     ammo_text = font.render(f"Ammo: {player.ammo}", True, (255, 255, 255))
-    health_text = font.render(f"Health: {player.health}", True, (255, 0, 0))
+    # health_text = font.render(f"Health: {player.health}", True, (255, 0, 0))
     time_text = font.render(f"Survived: {(pygame.time.get_ticks() - start_time) // 1000}s", True, (255, 255, 255))
     kills_text = font.render(f"Kills: {kills}", True, (255, 255, 255))
     enemies_text = font.render(f"Enemies: {len(enemies)}", True, (255, 255, 255))
 
     screen.blit(ammo_text, (10, 10))
-    screen.blit(health_text, (10, 40))
+    # screen.blit(health_text, (10, 40))
     screen.blit(time_text, (10, 70))
     screen.blit(kills_text, (10, 100))
     screen.blit(enemies_text, (10, 130))

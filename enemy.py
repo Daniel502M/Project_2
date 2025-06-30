@@ -9,7 +9,7 @@ VISION_RANGE = 250
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, player_rect, screen_width, screen_height):
+    def __init__(self, player_rect, screen_width, screen_height, all_obstacles):
         super().__init__()
         self.speed = ENEMY_SPEED
         self.health = 25
@@ -27,7 +27,8 @@ class Enemy(pygame.sprite.Sprite):
         self.original_image = self.move_frames[0]
         self.image = self.original_image
 
-        self.rect = self.image.get_rect(center=random_spawn_position(player_rect, screen_width, screen_height))
+        spawn_pos = random_spawn_position(player_rect, screen_width, screen_height, all_obstacles)
+        self.rect = self.image.get_rect(center=spawn_pos)
         self.hitbox_width = int(self.rect.width * 0.3)
         self.hitbox_height = int(self.rect.height * 0.5)
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
@@ -221,10 +222,10 @@ class EnemyBullet(pygame.sprite.Sprite):
 
 
 class RangedEnemy(Enemy):
-    def __init__(self, player_rect, screen_width, screen_height):
-        super().__init__(player_rect, screen_width, screen_height)
+    def __init__(self, player_rect, screen_width, screen_height, all_obstacles):
+        super().__init__(player_rect, screen_width, screen_height, all_obstacles)
         self.last_shot = 0
-        self.shot_cooldown = 1500  # мс
+        self.shot_cooldown = 1500
 
     def update(self, player, obstacles, bullets_group, shoot_sound=None):
         super().update(player, obstacles)
@@ -239,19 +240,27 @@ class RangedEnemy(Enemy):
                     shoot_sound.play()
 
 
-def random_spawn_position(player_rect, screen_width, screen_height):
+def random_spawn_position(player_rect, screen_width, screen_height, all_obstacles):
     max_attempts = 100
     for _ in range(max_attempts):
         x = random.randint(0, MAP_WIDTH)
         y = random.randint(0, MAP_HEIGHT)
+        spawn_rect = pygame.Rect(x - 20, y - 20, 40, 40)
+
         visible_area = pygame.Rect(
             player_rect.centerx - screen_width // 2,
             player_rect.centery - screen_height // 2,
             screen_width,
             screen_height
         )
-        if not visible_area.collidepoint(x, y):
-            return x, y
+
+        if visible_area.colliderect(spawn_rect):
+            continue
+
+        if any(spawn_rect.colliderect(ob) for ob in all_obstacles):
+            continue
+
+        return x, y
 
     return random.choice([
         (random.randint(0, MAP_WIDTH), -60),

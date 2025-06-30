@@ -4,24 +4,32 @@ from settings import BULLET_SPEED
 
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, pos, target_pos):
+    def __init__(self, pos, target):
         super().__init__()
-        original_image = pygame.image.load('assets/bullet.png').convert_alpha()
-        dx = target_pos[0] - pos[0]
-        dy = target_pos[1] - pos[1]
-        angle = math.atan2(dy, dx)
-        self.velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * BULLET_SPEED
-        self.image = pygame.transform.rotate(original_image, -math.degrees(angle))
+        # Загружаем базовое изображение пули
+        base_image = pygame.image.load("assets/bullet.png").convert_alpha()
+
+        # Направление
+        direction = pygame.Vector2(target) - pygame.Vector2(pos)
+        if direction.length() == 0:
+            direction = pygame.Vector2(1, 0)
+        self.velocity = direction.normalize() * BULLET_SPEED
+
+        # Расчёт угла поворота (по оси Y вверх, по X — вправо)
+        angle = math.degrees(math.atan2(-self.velocity.y, self.velocity.x))
+        self.image = pygame.transform.rotate(base_image, angle)
+
         self.rect = self.image.get_rect(center=pos)
         self.spawn_time = pygame.time.get_ticks()
 
-    def update(self, obstacles):
-        self.rect.x += self.velocity.x
-        self.rect.y += self.velocity.y
+    def update(self, dt, bullet_blocking, enemies):
+        self.rect.x += self.velocity.x * dt
+        self.rect.y += self.velocity.y * dt
 
-        # 💥 Проверка столкновения с препятствием
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle):
-                self.kill()  # Удаляем пулю при попадании в стену/дверь
+        for ob in bullet_blocking:
+            if ob.colliderect(self.rect):
+                self.kill()
                 return
 
+        if pygame.time.get_ticks() - self.spawn_time > 3000:
+            self.kill()
