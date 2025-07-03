@@ -6,6 +6,7 @@ from player import Player
 from enemy import Enemy, RangedEnemy, EnemyBullet
 from bullet import Bullet
 from pickup import AmmoPickup
+from coin import Coin
 from map_loader import TileMap
 from menu import show_menu
 
@@ -71,6 +72,8 @@ bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
 pickups = pygame.sprite.Group()
+coins = pygame.sprite.Group()
+
 
 kills = 0
 start_time = pygame.time.get_ticks()
@@ -147,10 +150,16 @@ while True:
             enemy.health -= 25
             bullet.kill()
             if enemy.health <= 0:
-                pickups.add(AmmoPickup(enemy.rect.center))
+                # Выпадение монет
+                coin_count = random.randint(0, 5)
+                for _ in range(coin_count):
+                    coins.add(Coin(enemy.rect.center))
                 enemy_death_sound.play()
                 enemy.kill()
                 kills += 1
+
+    for coin in pygame.sprite.spritecollide(player, coins, True):
+        player.coins += 1
 
     for enemy in enemies:
         if player.hitbox.colliderect(enemy.hitbox):
@@ -181,7 +190,7 @@ while True:
     for rect in active_obstacles:
         pygame.draw.rect(screen, (0, 0, 255), rect.move(-offset), 2)
 
-    for group in (pickups, bullets, enemy_bullets, enemies):
+    for group in (pickups, coins, bullets, enemy_bullets, enemies):
         for spr in group:
             screen.blit(spr.image, spr.rect.topleft - offset)
 
@@ -193,6 +202,11 @@ while True:
     time_text = font.render(f"Survived: {(pygame.time.get_ticks() - start_time) // 1000}s", True, (255, 255, 255))
     kills_text = font.render(f"Kills: {kills}", True, (255, 255, 255))
     enemies_text = font.render(f"Enemies: {len(enemies)}", True, (255, 255, 255))
+
+    coin_icon = pygame.image.load("assets/coin.png").convert_alpha()
+    screen.blit(coin_icon, (10, 160))
+    coins_text = font.render(f"x {player.coins}", True, (255, 255, 0))
+    screen.blit(coins_text, (40, 162))
 
     screen.blit(ammo_text, (10, 10))
     # screen.blit(health_text, (10, 40))

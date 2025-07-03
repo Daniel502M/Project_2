@@ -34,6 +34,8 @@ class Enemy(pygame.sprite.Sprite):
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
         self.update_hitbox()
 
+        self.coin_group = None  # Это установим позже из main.py
+
         self.patrol_origin = self.rect.center
         self.patrol_points = self.generate_patrol_points()
         self.patrol_index = 0
@@ -109,19 +111,27 @@ class Enemy(pygame.sprite.Sprite):
         dx = dx / dist * self.speed
         dy = dy / dist * self.speed
 
-        original_x = self.rect.x
+        # Движение по X
         self.rect.x += dx
         self.update_hitbox()
-        if any(self.hitbox.colliderect(ob) for ob in obstacles):
-            self.rect.x = original_x
-            self.update_hitbox()
+        for ob in obstacles:
+            if self.hitbox.colliderect(ob):
+                overlap = self.hitbox.right - ob.left if dx > 0 else ob.right - self.hitbox.left
+                if overlap > ob.width * 0.3:
+                    self.rect.x -= dx
+                    self.update_hitbox()
+                break
 
-        original_y = self.rect.y
+        # Движение по Y
         self.rect.y += dy
         self.update_hitbox()
-        if any(self.hitbox.colliderect(ob) for ob in obstacles):
-            self.rect.y = original_y
-            self.update_hitbox()
+        for ob in obstacles:
+            if self.hitbox.colliderect(ob):
+                overlap = self.hitbox.bottom - ob.top if dy > 0 else ob.bottom - self.hitbox.top
+                if overlap > ob.height * 0.3:
+                    self.rect.y -= dy
+                    self.update_hitbox()
+                break
 
         self.rect.clamp_ip(pygame.Rect(0, 0, MAP_WIDTH, MAP_HEIGHT))
         self.update_hitbox()
@@ -186,6 +196,12 @@ class Enemy(pygame.sprite.Sprite):
                 self.alive = False
                 self.state = "dead"
                 self.current_frame = 0
+
+                if self.coin_group:  # Выпадение монет
+                    from coin import Coin
+                    for _ in range(random.randint(0, 5)):
+                        offset = pygame.Vector2(random.randint(-15, 15), random.randint(-15, 15))
+                        self.coin_group.add(Coin(self.rect.center + offset))
 
     def update_hitbox(self):
         self.hitbox.center = self.rect.center

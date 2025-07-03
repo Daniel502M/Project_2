@@ -20,6 +20,8 @@ class Player(pygame.sprite.Sprite):
         self.reload_font = pygame.font.Font(None, 30)
         self.health_font = pygame.font.Font(None, 32)
 
+        self.coins = 0
+
         self.hitbox_width = int(self.rect.width * 0.35)
         self.hitbox_height = int(self.rect.height * 0.55)
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
@@ -109,25 +111,50 @@ class Player(pygame.sprite.Sprite):
             screen.blit(text, (10, 70))
 
     def move_and_collide(self, dx, dy, obstacles):
+        slide_speed = self.speed * 0.3  # скорость скольжения (≤ 30% от обычной)
+        original_x = self.hitbox.x
+        original_y = self.hitbox.y
+
+        # Двигаемся по X
         self.hitbox.x += dx
+        collided_x = None
         for obstacle in obstacles:
             if self.hitbox.colliderect(obstacle):
+                collided_x = obstacle
                 if dx > 0:
                     self.hitbox.right = obstacle.left
                 elif dx < 0:
                     self.hitbox.left = obstacle.right
 
+        # Двигаемся по Y
         self.hitbox.y += dy
+        collided_y = None
         for obstacle in obstacles:
             if self.hitbox.colliderect(obstacle):
+                collided_y = obstacle
                 if dy > 0:
                     self.hitbox.bottom = obstacle.top
                 elif dy < 0:
                     self.hitbox.top = obstacle.bottom
 
-        if self.hitbox.left < 0: self.hitbox.left = 0
-        if self.hitbox.right > MAP_WIDTH: self.hitbox.right = MAP_WIDTH
-        if self.hitbox.top < 0: self.hitbox.top = 0
-        if self.hitbox.bottom > MAP_HEIGHT: self.hitbox.bottom = MAP_HEIGHT
+        # Скользим по Y если заблокирован X
+        if collided_x and not collided_y and abs(dy) > 0:
+            self.hitbox.x = original_x
+            self.hitbox.y += math.copysign(slide_speed, dy)
+            for obstacle in obstacles:
+                if self.hitbox.colliderect(obstacle):
+                    self.hitbox.y -= math.copysign(slide_speed, dy)
+                    break
 
+        # Скользим по X если заблокирован Y
+        if collided_y and not collided_x and abs(dx) > 0:
+            self.hitbox.y = original_y
+            self.hitbox.x += math.copysign(slide_speed, dx)
+            for obstacle in obstacles:
+                if self.hitbox.colliderect(obstacle):
+                    self.hitbox.x -= math.copysign(slide_speed, dx)
+                    break
+
+        # Ограничения карты
+        self.hitbox.clamp_ip(pygame.Rect(0, 0, MAP_WIDTH, MAP_HEIGHT))
         self.rect.center = self.hitbox.center
