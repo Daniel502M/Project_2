@@ -34,7 +34,7 @@ class Enemy(pygame.sprite.Sprite):
         self.hitbox = pygame.Rect(0, 0, self.hitbox_width, self.hitbox_height)
         self.update_hitbox()
 
-        self.coin_group = None  # Это установим позже из main.py
+        self.coin_group = None
 
         self.patrol_origin = self.rect.center
         self.patrol_points = self.generate_patrol_points()
@@ -111,30 +111,52 @@ class Enemy(pygame.sprite.Sprite):
         dx = dx / dist * self.speed
         dy = dy / dist * self.speed
 
+        slide_speed = self.speed * 0.3
+        original_x = self.hitbox.x
+        original_y = self.hitbox.y
+
         # Движение по X
-        self.rect.x += dx
-        self.update_hitbox()
-        for ob in obstacles:
-            if self.hitbox.colliderect(ob):
-                overlap = self.hitbox.right - ob.left if dx > 0 else ob.right - self.hitbox.left
-                if overlap > ob.width * 0.3:
-                    self.rect.x -= dx
-                    self.update_hitbox()
-                break
+        self.hitbox.x += dx
+        collided_x = None
+        for obstacle in obstacles:
+            if self.hitbox.colliderect(obstacle):
+                collided_x = obstacle
+                if dx > 0:
+                    self.hitbox.right = obstacle.left
+                elif dx < 0:
+                    self.hitbox.left = obstacle.right
 
         # Движение по Y
-        self.rect.y += dy
-        self.update_hitbox()
-        for ob in obstacles:
-            if self.hitbox.colliderect(ob):
-                overlap = self.hitbox.bottom - ob.top if dy > 0 else ob.bottom - self.hitbox.top
-                if overlap > ob.height * 0.3:
-                    self.rect.y -= dy
-                    self.update_hitbox()
-                break
+        self.hitbox.y += dy
+        collided_y = None
+        for obstacle in obstacles:
+            if self.hitbox.colliderect(obstacle):
+                collided_y = obstacle
+                if dy > 0:
+                    self.hitbox.bottom = obstacle.top
+                elif dy < 0:
+                    self.hitbox.top = obstacle.bottom
 
-        self.rect.clamp_ip(pygame.Rect(0, 0, MAP_WIDTH, MAP_HEIGHT))
-        self.update_hitbox()
+        # Скользим по Y если заблокирован X
+        if collided_x and not collided_y and abs(dy) > 0:
+            self.hitbox.x = original_x
+            self.hitbox.y += math.copysign(slide_speed, dy)
+            for obstacle in obstacles:
+                if self.hitbox.colliderect(obstacle):
+                    self.hitbox.y -= math.copysign(slide_speed, dy)
+                    break
+
+        # Скользим по X если заблокирован Y
+        if collided_y and not collided_x and abs(dx) > 0:
+            self.hitbox.y = original_y
+            self.hitbox.x += math.copysign(slide_speed, dx)
+            for obstacle in obstacles:
+                if self.hitbox.colliderect(obstacle):
+                    self.hitbox.x -= math.copysign(slide_speed, dx)
+                    break
+
+        self.hitbox.clamp_ip(pygame.Rect(0, 0, MAP_WIDTH, MAP_HEIGHT))
+        self.rect.center = self.hitbox.center
 
         direction = pygame.Vector2(target_pos) - pygame.Vector2(self.rect.center)
         self.angle = math.degrees(-math.atan2(direction.y, direction.x)) + 90
@@ -197,7 +219,7 @@ class Enemy(pygame.sprite.Sprite):
                 self.state = "dead"
                 self.current_frame = 0
 
-                if self.coin_group:  # Выпадение монет
+                if self.coin_group:
                     from coin import Coin
                     for _ in range(random.randint(0, 5)):
                         offset = pygame.Vector2(random.randint(-15, 15), random.randint(-15, 15))
