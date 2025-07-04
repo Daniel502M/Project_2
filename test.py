@@ -6,6 +6,8 @@ from player import Player
 from enemy import Enemy, RangedEnemy, EnemyBullet
 from bullet import Bullet
 from pickup import AmmoPickup
+from coin import Coin
+from shop import Shop  # 👈 импорт магазина
 from map_loader import TileMap
 from menu import show_menu
 
@@ -71,6 +73,8 @@ bullets = pygame.sprite.Group()
 enemy_bullets = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
 pickups = pygame.sprite.Group()
+coins = pygame.sprite.Group()
+
 
 kills = 0
 start_time = pygame.time.get_ticks()
@@ -78,6 +82,9 @@ start_time = pygame.time.get_ticks()
 SPAWN_EVENT = pygame.USEREVENT + 1
 pygame.time.set_timer(SPAWN_EVENT, 2000)
 font = pygame.font.SysFont(None, 30)
+
+shop = Shop()
+shop_open = False
 
 while True:
     dt = clock.tick(FPS) / 1000
@@ -88,16 +95,40 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == SPAWN_EVENT:
-            if len(enemies) < 50:
-                if random.random() < 0.2:
-                    enemies.add(RangedEnemy(player.rect, WIDTH, HEIGHT, static_obstacles))
-                else:
-                    enemies.add(Enemy(player.rect, WIDTH, HEIGHT, static_obstacles))
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            player.shooting = True
-        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            player.shooting = False
+
+        # Переключение магазина клавишей T
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_t:
+            shop_open = not shop_open
+            pygame.mouse.set_visible(shop_open)
+
+        if shop_open:
+            # Закрываем магазин крестиком
+            result = shop.handle_event(event, player)
+            if result == 'close':
+                shop_open = False
+                pygame.mouse.set_visible(False)
+                # Закрываем магазин клавишей ESC
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                shop_open = False
+                pygame.mouse.set_visible(False)
+
+        else:
+            # Обработка игровых событий, только если магазин закрыт
+            if event.type == SPAWN_EVENT and len(enemies) < 50:
+                enemies.add(
+                    RangedEnemy(player.rect, WIDTH, HEIGHT, static_obstacles)
+                    if random.random() < 0.2
+                    else Enemy(player.rect, WIDTH, HEIGHT, static_obstacles)
+                )
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                player.shooting = True
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                player.shooting = False
+
+    if shop_open:
+        shop.draw(screen, player)
+        pygame.display.flip()
+        continue  # Остановить обновления игры дальше, показать только магазин
 
     offset = pygame.Vector2(player.rect.center) - pygame.Vector2(WIDTH // 2, HEIGHT // 2)
     mouse_world = (mouse_pos[0] + offset.x, mouse_pos[1] + offset.y)
@@ -129,7 +160,7 @@ while True:
     player.update(keys, mouse_world, bullets, active_obstacles, shoot_sound=player_shoot_sound)
     player.draw_health(screen)
     pygame.display.update()
-    bullets.update(bullet_blocking)
+    bullets.update(dt, bullet_blocking, enemies)
     pickups.update()
     enemy_bullets.update(dt, bullet_blocking, player)
 
@@ -147,10 +178,16 @@ while True:
             enemy.health -= 25
             bullet.kill()
             if enemy.health <= 0:
-                pickups.add(AmmoPickup(enemy.rect.center))
+                # Выпадение монет
+                coin_count = random.randint(0, 5)
+                for _ in range(coin_count):
+                    coins.add(Coin(enemy.rect.center))
                 enemy_death_sound.play()
                 enemy.kill()
                 kills += 1
+
+    for coin in pygame.sprite.spritecollide(player, coins, True):
+        player.coins += 1
 
     for enemy in enemies:
         if player.hitbox.colliderect(enemy.hitbox):
@@ -181,7 +218,7 @@ while True:
     for rect in active_obstacles:
         pygame.draw.rect(screen, (0, 0, 255), rect.move(-offset), 2)
 
-    for group in (pickups, bullets, enemy_bullets, enemies):
+    for group in (pickups, coins, bullets, enemy_bullets, enemies):
         for spr in group:
             screen.blit(spr.image, spr.rect.topleft - offset)
 
@@ -189,11 +226,18 @@ while True:
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
 
     ammo_text = font.render(f"Ammo: {player.ammo}", True, (255, 255, 255))
+    # health_text = font.render(f"Health: {player.health}", True, (255, 0, 0))
     time_text = font.render(f"Survived: {(pygame.time.get_ticks() - start_time) // 1000}s", True, (255, 255, 255))
     kills_text = font.render(f"Kills: {kills}", True, (255, 255, 255))
     enemies_text = font.render(f"Enemies: {len(enemies)}", True, (255, 255, 255))
 
+    coin_icon = pygame.image.load("assets/coin.png").convert_alpha()
+    screen.blit(coin_icon, (10, 160))
+    coins_text = font.render(f"x {player.coins}", True, (255, 255, 0))
+    screen.blit(coins_text, (40, 162))
+
     screen.blit(ammo_text, (10, 10))
+    # screen.blit(health_text, (10, 40))
     screen.blit(time_text, (10, 70))
     screen.blit(kills_text, (10, 100))
     screen.blit(enemies_text, (10, 130))
@@ -219,5 +263,20 @@ while True:
         pygame.time.delay(3000)
         pygame.quit()
         sys.exit()
+
+    if shop_open:
+        shop_bg = pygame.Surface((400, 300))
+        shop_bg.fill((20, 20, 20))
+        pygame.draw.rect(shop_bg, (255, 255, 255), (0, 0, 400, 300), 4)
+
+        title = font.render("Магазин", True, (255, 255, 0))
+        shop_bg.blit(title, (150, 20))
+
+        # Кнопка покупки патронов
+        pygame.draw.rect(shop_bg, (100, 100, 255), (100, 200, 200, 50))
+        buy_text = font.render("Купить 10 патронов (5 монет)", True, (255, 255, 255))
+        shop_bg.blit(buy_text, (105, 215))
+
+        screen.blit(shop_bg, (WIDTH // 2 - 200, HEIGHT // 2 - 150))
 
     pygame.display.update()
