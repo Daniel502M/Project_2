@@ -83,7 +83,7 @@ SPAWN_EVENT = pygame.USEREVENT + 1
 pygame.time.set_timer(SPAWN_EVENT, 2000)
 font = pygame.font.SysFont(None, 30)
 
-shop = Shop(screen)
+shop = Shop()
 shop_open = False
 
 while True:
@@ -96,35 +96,39 @@ while True:
             pygame.quit()
             sys.exit()
 
-        # Открытие/закрытие магазина
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_t:
-                shop_open = True
-                pygame.mouse.set_visible(True)
-            elif event.key == pygame.K_ESCAPE and shop_open:
+        # Переключение магазина клавишей T
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_t:
+            shop_open = not shop_open
+            pygame.mouse.set_visible(shop_open)
+
+        if shop_open:
+            # Закрываем магазин крестиком
+            result = shop.handle_event(event, player)
+            if result == 'close':
+                shop_open = False
+                pygame.mouse.set_visible(False)
+                # Закрываем магазин клавишей ESC
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 shop_open = False
                 pygame.mouse.set_visible(False)
 
-        if shop_open:
-            shop.handle_event(event, player)
-            continue  # 👉 не обрабатываем остальные события во время магазина
+        else:
+            # Обработка игровых событий, только если магазин закрыт
+            if event.type == SPAWN_EVENT and len(enemies) < 50:
+                enemies.add(
+                    RangedEnemy(player.rect, WIDTH, HEIGHT, static_obstacles)
+                    if random.random() < 0.2
+                    else Enemy(player.rect, WIDTH, HEIGHT, static_obstacles)
+                )
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                player.shooting = True
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                player.shooting = False
 
-        # Игровые события (если магазин закрыт)
-        if event.type == SPAWN_EVENT and len(enemies) < 50:
-            enemy_type = RangedEnemy if random.random() < 0.2 else Enemy
-            enemies.add(enemy_type(player.rect, WIDTH, HEIGHT, static_obstacles))
-
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            player.shooting = True
-        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            player.shooting = False
-
-    # Отрисовка и логика магазина
     if shop_open:
-        screen.fill((30, 30, 30))
         shop.draw(screen, player)
         pygame.display.flip()
-        continue  # 👉 полностью пропускаем обновление игры
+        continue  # Остановить обновления игры дальше, показать только магазин
 
     offset = pygame.Vector2(player.rect.center) - pygame.Vector2(WIDTH // 2, HEIGHT // 2)
     mouse_world = (mouse_pos[0] + offset.x, mouse_pos[1] + offset.y)
