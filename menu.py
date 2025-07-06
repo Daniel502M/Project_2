@@ -1,65 +1,88 @@
 import pygame
+import sys
 from settings import WIDTH, HEIGHT
 
-def show_menu():
-    pygame.init()
-    pygame.mouse.set_visible(True)  # <-- Добавь эту строку, чтобы курсор был виден в меню
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Меню игры")
-    clock = pygame.time.Clock()
+selected_map_path = None  # <- сохраняем выбор карты глобально
 
-    # Загрузка изображений
+
+def show_menu():
+    global selected_map_path
+
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Zombie Game - Menu")
+    clock = pygame.time.Clock()
+    font = pygame.font.SysFont(None, 48)
+
+    maps = [
+        {"name": "Laboratory", "file": "Maps/Laboratory_Cart/Laboratory_Cart.tmx"},
+        {"name": "Lawn", "file": "Maps/Lawn_Cart/Lawn_Cart.tmx"}
+    ]
+    selected_map_index = 0
+
+    # Загрузка изображений кнопок
     start_button_img = pygame.image.load("assets/play.png").convert_alpha()
     menu_button_img = pygame.image.load("assets/menu.png").convert_alpha()
     exit_button_img = pygame.image.load("assets/exit.png").convert_alpha()
 
-    # Размеры кнопок
-    start_button_size = (145, 44)
-    menu_button_size = (157, 44)
-    exit_button_size = (133, 44)
+    play_rect = start_button_img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
+    menu_rect = menu_button_img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 10))
+    exit_rect = exit_button_img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 80))
 
-    # Масштабируем изображения
-    start_button_img = pygame.transform.scale(start_button_img, start_button_size)
-    menu_button_img = pygame.transform.scale(menu_button_img, menu_button_size)
-    exit_button_img = pygame.transform.scale(exit_button_img, exit_button_size)
+    map_buttons = []
+    map_button_height = 60
+    for i, m in enumerate(maps):
+        rect = pygame.Rect(20, 30 + i * (map_button_height + 10), 180, map_button_height)
+        map_buttons.append((rect, m))
 
-    # Получаем прямоугольники для размещения
-    start_button_rect = start_button_img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 60))
-    menu_button_rect = menu_button_img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 10))
-    exit_button_rect = exit_button_img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 80))
+    pygame.mouse.set_visible(True)
 
     while True:
+        screen.fill((207, 198, 184))
+        mouse_pos = pygame.mouse.get_pos()
+
+        # Заголовок
+        title = font.render("Zombie Game", True, (0, 0, 0))
+        screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 50))
+
+        # Кнопки карт
+        map_title = pygame.font.SysFont(None, 36).render("Карта:", True, (0, 0, 0))
+        screen.blit(map_title, (20, 0))
+        for i, (rect, m) in enumerate(map_buttons):
+            is_selected = (i == selected_map_index)
+            color = (0, 200, 0) if is_selected else (60, 60, 60)
+            pygame.draw.rect(screen, color, rect, border_radius=6)
+            pygame.draw.rect(screen, (255, 255, 255), rect, 2, border_radius=6)
+            name_text = pygame.font.SysFont(None, 32).render(m["name"], True, (255, 255, 255))
+            screen.blit(name_text, (rect.centerx - name_text.get_width() // 2, rect.centery - name_text.get_height() // 2))
+
+        # Кнопки Play / Menu / Exit
+        screen.blit(start_button_img, play_rect.topleft)
+        screen.blit(menu_button_img, menu_rect.topleft)
+        screen.blit(exit_button_img, exit_rect.topleft)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                return False
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse_pos = pygame.mouse.get_pos()
-                if start_button_rect.collidepoint(mouse_pos):
-                    return True
-                elif menu_button_rect.collidepoint(mouse_pos):
-                    # Здесь можно добавить функциональность меню (настройки и т.п.)
-                    pass
-                elif exit_button_rect.collidepoint(mouse_pos):
+                sys.exit()
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if play_rect.collidepoint(mouse_pos):
+                    selected_map_path = maps[selected_map_index]["file"]
+                    return "play"
+                elif exit_rect.collidepoint(mouse_pos):
                     pygame.quit()
-                    return False
-
-        screen.fill((207, 198, 184))  # Цвет фона
-
-        mouse_pos = pygame.mouse.get_pos()
-
-        def draw_button(img, rect):
-            if rect.collidepoint(mouse_pos):
-                highlight = pygame.Surface(rect.size, pygame.SRCALPHA)
-                highlight.fill((255, 255, 255, 40))
-                screen.blit(img, rect.topleft)
-                screen.blit(highlight, rect.topleft)
-            else:
-                screen.blit(img, rect.topleft)
-
-        draw_button(start_button_img, start_button_rect)
-        draw_button(menu_button_img, menu_button_rect)
-        draw_button(exit_button_img, exit_button_rect)
+                    sys.exit()
+                elif menu_rect.collidepoint(mouse_pos):
+                    print("Menu button clicked")  # можешь тут добавить нужное поведение
+                else:
+                    for i, (rect, _) in enumerate(map_buttons):
+                        if rect.collidepoint(mouse_pos):
+                            selected_map_index = i
 
         pygame.display.flip()
         clock.tick(60)
+
+
+def get_selected_map():
+    return selected_map_path

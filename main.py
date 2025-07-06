@@ -9,10 +9,19 @@ from pickup import AmmoPickup
 from coin import Coin
 from shop import Shop
 from map_loader import TileMap
-from menu import show_menu
+from menu import show_menu, get_selected_map
 
 pygame.init()
 pygame.mixer.init()
+
+# Один раз вызываем меню
+action = show_menu()
+if action != "play":
+    pygame.quit()
+    sys.exit()
+
+selected_map = get_selected_map()
+tile_map = TileMap(selected_map)
 
 pygame.mixer.music.load("assets/sounds/Zombie_Games_Sound.mp3")
 pygame.mixer.music.set_volume(0.3)
@@ -28,16 +37,12 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.mouse.set_visible(False)
 
-if not show_menu():
-    pygame.quit()
-    sys.exit()
-
 # Старт музыки только после меню
 pygame.mixer.music.play(-1)
 pygame.mouse.set_visible(False)  # Скрываем курсор после меню
 
 door_open_time = {}
-tile_map = TileMap("Maps/Laboratory_Cart/Laboratory_Cart.tmx")
+
 static_obstacles, door_obstacles = tile_map.get_collision_rects()
 object_obstacles, _ = tile_map.get_object_collision_rects()
 
