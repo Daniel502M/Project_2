@@ -14,12 +14,9 @@ from menu import show_menu
 pygame.init()
 pygame.mixer.init()
 
-# Загрузка и запуск фоновой музыки
 pygame.mixer.music.load("assets/sounds/Zombie_Games_Sound.mp3")
 pygame.mixer.music.set_volume(0.3)
-pygame.mixer.music.play(-1)
 
-# Загрузка звуков
 player_shoot_sound = pygame.mixer.Sound("assets/sounds/player_shoot.mp3")
 enemy_shoot_sound = pygame.mixer.Sound("assets/sounds/enemy_shoot.mp3")
 enemy_death_sound = pygame.mixer.Sound("assets/sounds/enemy_death.mp3")
@@ -31,14 +28,19 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 pygame.mouse.set_visible(False)
 
-door_open_time = {}
+if not show_menu():
+    pygame.quit()
+    sys.exit()
 
+# Старт музыки только после меню
+pygame.mixer.music.play(-1)
+
+door_open_time = {}
 tile_map = TileMap("Maps/Laboratory_Cart/Laboratory_Cart..tmx")
 static_obstacles, door_obstacles = tile_map.get_collision_rects()
 object_obstacles, _ = tile_map.get_object_collision_rects()
 
 door_spritesheet = pygame.image.load("Maps/Laboratory_Cart/Sprite_for_Cart_Game.png").convert_alpha()
-
 SPRITE_SIZE = 64
 door_gids = {
     15: ("top", 0, 0),
@@ -54,7 +56,6 @@ for gid, (name, sx, sy) in door_gids.items():
     door_open_images[gid] = clip
 
 open_door_sprites = {}
-
 static_obstacles += object_obstacles
 opened_doors = set()
 crosshair_surface = pygame.Surface((40, 40), pygame.SRCALPHA)
@@ -151,7 +152,6 @@ while True:
                 del door_open_time[did]
                 del open_door_sprites[did]
             continue
-
         dist = pygame.Vector2(player.rect.center) - pygame.Vector2(door["rect"].center)
         if dist.length() < 50:
             opened_doors.add(did)
@@ -167,8 +167,6 @@ while True:
     ]
 
     player.update(keys, mouse_world, bullets, active_obstacles, shoot_sound=player_shoot_sound)
-    player.draw_health(screen)
-    pygame.display.update()
     bullets.update(dt, bullet_blocking, enemies)
     pickups.update()
     enemy_bullets.update(dt, bullet_blocking, player)
@@ -187,8 +185,7 @@ while True:
             enemy.health -= 25
             bullet.kill()
             if enemy.health <= 0:
-                coin_count = random.randint(0, 5)
-                for _ in range(coin_count):
+                for _ in range(random.randint(0, 5)):
                     coins.add(Coin(enemy.rect.center))
                 enemy_death_sound.play()
                 enemy.kill()
@@ -231,22 +228,26 @@ while True:
             screen.blit(spr.image, spr.rect.topleft - offset)
 
     screen.blit(player.image, player.rect.topleft - offset)
+    player.draw_health(screen)
+    player.draw_armor(screen)
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
 
     ammo_text = font.render(f"Ammo: {player.ammo}", True, (255, 255, 255))
+    armor_text = font.render(f"Armor: {player.armor}", True, (0, 200, 255))
     time_text = font.render(f"Survived: {(pygame.time.get_ticks() - start_time) // 1000}s", True, (255, 255, 255))
     kills_text = font.render(f"Kills: {kills}", True, (255, 255, 255))
     enemies_text = font.render(f"Enemies: {len(enemies)}", True, (255, 255, 255))
 
     coin_icon = pygame.image.load("assets/coin.png").convert_alpha()
-    screen.blit(coin_icon, (10, 160))
+    screen.blit(coin_icon, (10, 222))
     coins_text = font.render(f"x {player.coins}", True, (255, 255, 0))
-    screen.blit(coins_text, (40, 162))
+    screen.blit(coins_text, (40, 220))
 
     screen.blit(ammo_text, (10, 10))
-    screen.blit(time_text, (10, 70))
-    screen.blit(kills_text, (10, 100))
-    screen.blit(enemies_text, (10, 130))
+    screen.blit(armor_text, (10, 70))
+    screen.blit(time_text, (10, 130))
+    screen.blit(kills_text, (10, 160))
+    screen.blit(enemies_text, (10, 190))
 
     mini = pygame.Rect(WIDTH - 110, 10, 100, 100)
     pygame.draw.rect(screen, (50, 50, 50), mini, border_radius=4)
@@ -269,19 +270,5 @@ while True:
         pygame.time.delay(3000)
         game_paused = True
         pygame.mouse.set_visible(True)
-
-    if shop_open:
-        shop_bg = pygame.Surface((400, 300))
-        shop_bg.fill((20, 20, 20))
-        pygame.draw.rect(shop_bg, (255, 255, 255), (0, 0, 400, 300), 4)
-
-        title = font.render("Магазин", True, (255, 255, 0))
-        shop_bg.blit(title, (150, 20))
-
-        pygame.draw.rect(shop_bg, (100, 100, 255), (100, 200, 200, 50))
-        buy_text = font.render("Купить 10 патронов (5 монет)", True, (255, 255, 255))
-        shop_bg.blit(buy_text, (105, 215))
-
-        screen.blit(shop_bg, (WIDTH // 2 - 200, HEIGHT // 2 - 150))
 
     pygame.display.update()

@@ -12,6 +12,9 @@ class Player(pygame.sprite.Sprite):
 
         self.speed = PLAYER_SPEED
         self.health = 100
+        self.armor = 0  # ← броня
+        self.max_health = 100
+        self.armor = 0  # Новое: броня
         self.alive = True
         self.ammo = 20
         self.shooting = False
@@ -28,26 +31,37 @@ class Player(pygame.sprite.Sprite):
         self.update_hitbox()
 
         self.health_images = {
-            0: pygame.image.load('assets/Hp_player/0_hp.png').convert_alpha(),
-            10: pygame.image.load('assets/Hp_player/10_hp.png').convert_alpha(),
-            20: pygame.image.load('assets/Hp_player/20_hp.png').convert_alpha(),
-            30: pygame.image.load('assets/Hp_player/30_hp.png').convert_alpha(),
-            40: pygame.image.load('assets/Hp_player/40_hp.png').convert_alpha(),
-            50: pygame.image.load('assets/Hp_player/50_hp.png').convert_alpha(),
-            60: pygame.image.load('assets/Hp_player/60_hp.png').convert_alpha(),
-            70: pygame.image.load('assets/Hp_player/70_hp.png').convert_alpha(),
-            80: pygame.image.load('assets/Hp_player/80_hp.png').convert_alpha(),
-            90: pygame.image.load('assets/Hp_player/90_hp.png').convert_alpha(),
-            100: pygame.image.load('assets/Hp_player/100_hp.png').convert_alpha()
+            i: pygame.image.load(f'assets/Hp_player/{i}_hp.png').convert_alpha()
+            for i in range(0, 101, 10)
+        }
+
+        self.armor_images = {
+            i: pygame.image.load(f'assets/Hp_player/{i}_hp.png').convert_alpha()
+            for i in range(0, 101, 10)
         }
 
     def take_damage(self, amount):
-        self.health -= amount
-        if self.health < 0:
-            self.health = 0
-        print(f"Игрок получил урон! Текущее здоровье: {self.health}")
-        if self.health == 0:
-            self.die()
+        # Сначала броня
+        if self.armor > 0:
+            absorbed = min(self.armor, amount)
+            self.armor -= absorbed
+            amount -= absorbed
+            print(f"Броня поглотила {absorbed} урона. Осталось брони: {self.armor}")
+
+        # Остаток урона по здоровью
+        if amount > 0:
+            self.health -= amount
+            print(f"Игрок получил {amount} урона! Здоровье: {self.health}")
+            if self.health <= 0:
+                self.health = 0
+                self.die()
+
+    def heal(self, amount):
+        old_hp = self.health
+        self.health += amount
+        if self.health > self.max_health:
+            self.health = self.max_health
+        print(f"Здоровье восстановлено с {old_hp} до {self.health}")
 
     def die(self):
         self.alive = False
@@ -67,16 +81,19 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.rect(screen, (255, 0, 0), self.hitbox.move(-offset), 2)
 
     def draw_health(self, screen):
-        # Сортируем ключи словаря с изображениями по убыванию, чтобы сначала проверять наибольшие значения здоровья
         sorted_healths = sorted(self.health_images.keys(), reverse=True)
-
         for hp in sorted_healths:
             if self.health >= hp:
                 screen.blit(self.health_images[hp], (10, 40))
                 break
         else:
-            # Если здоровье меньше минимального доступного значения, отображаем изображение для 0 HP
             screen.blit(self.health_images[0], (10, 10))
+
+    def draw_armor(self, screen):
+        for ar in sorted(self.armor_images.keys(), reverse=True):
+            if self.armor >= ar:
+                screen.blit(self.armor_images[ar], (10, 100))
+                break
 
     def handle_movement(self, keys):
         dx = dy = 0
@@ -96,7 +113,7 @@ class Player(pygame.sprite.Sprite):
     def handle_shooting(self, mouse_pos, bullets_group, shoot_sound=None):
         now = pygame.time.get_ticks()
         if self.shooting and now - self.last_shot > self.shoot_cooldown and self.ammo > 0:
-            from bullet import Bullet  # импорт внутри, чтобы избежать цикличности
+            from bullet import Bullet
             bullet = Bullet(self.rect.center, mouse_pos)
             bullets_group.add(bullet)
             self.ammo -= 1
@@ -111,11 +128,10 @@ class Player(pygame.sprite.Sprite):
             screen.blit(text, (10, 70))
 
     def move_and_collide(self, dx, dy, obstacles):
-        slide_speed = self.speed * 0.3  # скорость скольжения (≤ 30% от обычной)
+        slide_speed = self.speed * 0.3
         original_x = self.hitbox.x
         original_y = self.hitbox.y
 
-        # Двигаемся по X
         self.hitbox.x += dx
         collided_x = None
         for obstacle in obstacles:
@@ -126,7 +142,6 @@ class Player(pygame.sprite.Sprite):
                 elif dx < 0:
                     self.hitbox.left = obstacle.right
 
-        # Двигаемся по Y
         self.hitbox.y += dy
         collided_y = None
         for obstacle in obstacles:
@@ -137,7 +152,6 @@ class Player(pygame.sprite.Sprite):
                 elif dy < 0:
                     self.hitbox.top = obstacle.bottom
 
-        # Скользим по Y если заблокирован X
         if collided_x and not collided_y and abs(dy) > 0:
             self.hitbox.x = original_x
             self.hitbox.y += math.copysign(slide_speed, dy)
@@ -146,7 +160,6 @@ class Player(pygame.sprite.Sprite):
                     self.hitbox.y -= math.copysign(slide_speed, dy)
                     break
 
-        # Скользим по X если заблокирован Y
         if collided_y and not collided_x and abs(dx) > 0:
             self.hitbox.y = original_y
             self.hitbox.x += math.copysign(slide_speed, dx)
@@ -155,6 +168,5 @@ class Player(pygame.sprite.Sprite):
                     self.hitbox.x -= math.copysign(slide_speed, dx)
                     break
 
-        # Ограничения карты
         self.hitbox.clamp_ip(pygame.Rect(0, 0, MAP_WIDTH, MAP_HEIGHT))
         self.rect.center = self.hitbox.center
