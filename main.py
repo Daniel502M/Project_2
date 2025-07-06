@@ -34,9 +34,10 @@ if not show_menu():
 
 # Старт музыки только после меню
 pygame.mixer.music.play(-1)
+pygame.mouse.set_visible(False)  # Скрываем курсор после меню
 
 door_open_time = {}
-tile_map = TileMap("Maps/Laboratory_Cart/Laboratory_Cart..tmx")
+tile_map = TileMap("Maps/Laboratory_Cart/Laboratory_Cart.tmx")
 static_obstacles, door_obstacles = tile_map.get_collision_rects()
 object_obstacles, _ = tile_map.get_object_collision_rects()
 
