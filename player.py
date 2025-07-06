@@ -23,7 +23,7 @@ class Player(pygame.sprite.Sprite):
         self.reload_font = pygame.font.Font(None, 30)
         self.health_font = pygame.font.Font(None, 32)
 
-        self.coins = 0
+        self.coins = 50
 
         self.hitbox_width = int(self.rect.width * 0.35)
         self.hitbox_height = int(self.rect.height * 0.55)
@@ -36,8 +36,8 @@ class Player(pygame.sprite.Sprite):
         }
 
         self.armor_images = {
-            i: pygame.image.load(f'assets/Hp_player/{i}_hp.png').convert_alpha()
-            for i in range(0, 101, 10)
+            i: pygame.image.load(f'assets/Armor_player/{i}_armor.png').convert_alpha()
+            for i in range(10, 101, 10)
         }
 
     def take_damage(self, amount):
@@ -80,20 +80,23 @@ class Player(pygame.sprite.Sprite):
     def draw_hitbox(self, screen, offset):
         pygame.draw.rect(screen, (255, 0, 0), self.hitbox.move(-offset), 2)
 
-    def draw_health(self, screen):
+    def draw_status_bars(self, screen):
+        # Отображение плашки здоровья
         sorted_healths = sorted(self.health_images.keys(), reverse=True)
         for hp in sorted_healths:
             if self.health >= hp:
-                screen.blit(self.health_images[hp], (10, 40))
+                screen.blit(self.health_images[hp], (10, 40))  # Здоровье на (10, 40)
                 break
         else:
-            screen.blit(self.health_images[0], (10, 10))
+            screen.blit(self.health_images[0], (10, 40))
 
-    def draw_armor(self, screen):
-        for ar in sorted(self.armor_images.keys(), reverse=True):
-            if self.armor >= ar:
-                screen.blit(self.armor_images[ar], (10, 100))
-                break
+        # Отображение плашки брони — если броня есть
+        if self.armor > 0:
+            sorted_armors = sorted(self.armor_images.keys(), reverse=True)
+            for ar in sorted_armors:
+                if self.armor >= ar:
+                    screen.blit(self.armor_images[ar], (10, 78))  # Броня чуть ниже
+                    break
 
     def handle_movement(self, keys):
         dx = dy = 0

@@ -229,26 +229,23 @@ while True:
             screen.blit(spr.image, spr.rect.topleft - offset)
 
     screen.blit(player.image, player.rect.topleft - offset)
-    player.draw_health(screen)
-    player.draw_armor(screen)
+    player.draw_status_bars(screen)
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
 
     ammo_text = font.render(f"Ammo: {player.ammo}", True, (255, 255, 255))
-    armor_text = font.render(f"Armor: {player.armor}", True, (0, 200, 255))
     time_text = font.render(f"Survived: {(pygame.time.get_ticks() - start_time) // 1000}s", True, (255, 255, 255))
     kills_text = font.render(f"Kills: {kills}", True, (255, 255, 255))
     enemies_text = font.render(f"Enemies: {len(enemies)}", True, (255, 255, 255))
 
     coin_icon = pygame.image.load("assets/coin.png").convert_alpha()
-    screen.blit(coin_icon, (10, 222))
+    screen.blit(coin_icon, (10, 192))
     coins_text = font.render(f"x {player.coins}", True, (255, 255, 0))
-    screen.blit(coins_text, (40, 220))
+    screen.blit(coins_text, (40, 190))
 
     screen.blit(ammo_text, (10, 10))
-    screen.blit(armor_text, (10, 70))
-    screen.blit(time_text, (10, 130))
-    screen.blit(kills_text, (10, 160))
-    screen.blit(enemies_text, (10, 190))
+    screen.blit(time_text, (10, 100))
+    screen.blit(kills_text, (10, 130))
+    screen.blit(enemies_text, (10, 160))
 
     mini = pygame.Rect(WIDTH - 110, 10, 100, 100)
     pygame.draw.rect(screen, (50, 50, 50), mini, border_radius=4)
