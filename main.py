@@ -21,7 +21,14 @@ if action != "play":
     sys.exit()
 
 selected_map = get_selected_map()
+from map_config import map_configs
+
 tile_map = TileMap(selected_map)
+
+# Получаем настройки карты
+config = map_configs.get(selected_map)
+if config is None:
+    raise ValueError(f"Нет конфигурации для карты: {selected_map}")
 
 pygame.mixer.music.load("assets/sounds/Zombie_Games_Sound.mp3")
 pygame.mixer.music.set_volume(0.3)
@@ -46,14 +53,9 @@ door_open_time = {}
 static_obstacles, door_obstacles = tile_map.get_collision_rects()
 object_obstacles, _ = tile_map.get_object_collision_rects()
 
-door_spritesheet = pygame.image.load("Maps/Laboratory_Cart/Sprite_for_Cart_Game.png").convert_alpha()
+door_spritesheet = pygame.image.load(config["spritesheet"]).convert_alpha()
+door_gids = tile_map.config["door_gids"]
 SPRITE_SIZE = 64
-door_gids = {
-    15: ("top", 0, 0),
-    20: ("bottom", 64, 0),
-    12: ("right", 128, 0),
-    13: ("left", 192, 0),
-}
 
 door_open_images = {}
 for gid, (name, sx, sy) in door_gids.items():
