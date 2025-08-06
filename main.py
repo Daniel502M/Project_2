@@ -24,6 +24,7 @@ selected_map = get_selected_map()
 from map_config import map_configs
 
 tile_map = TileMap(selected_map)
+tile_map.print_unique_gids()
 
 # Получаем настройки карты
 config = map_configs.get(selected_map)
@@ -45,7 +46,7 @@ clock = pygame.time.Clock()
 pygame.mouse.set_visible(False)
 
 # Старт музыки только после меню
-pygame.mixer.music.play(-1)
+# pygame.mixer.music.play(-1)
 pygame.mouse.set_visible(False)  # Скрываем курсор после меню
 
 door_open_time = {}
@@ -213,8 +214,17 @@ while True:
         player.ammo += 5
 
     screen.fill((30, 30, 30))
-    tile_map.draw(screen, offset,
-                  skip_door_ids={f"{d['pos'][0]}_{d['pos'][1]}" for d in door_obstacles if d['id'] in opened_doors})
+    allowed_gids = {3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+                    31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+                    61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+                    91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116}  # Для этих тайлов показываем GID
+    tile_map.draw(
+        screen,
+        offset,
+        skip_door_ids={f"{d['pos'][0]}_{d['pos'][1]}" for d in door_obstacles if d['id'] in opened_doors},
+        show_tile_ids=True,
+        allowed_gids=allowed_gids
+    )
 
     for door in door_obstacles:
         pos = door["rect"].topleft
@@ -236,6 +246,8 @@ while True:
             screen.blit(spr.image, spr.rect.topleft - offset)
 
     screen.blit(player.image, player.rect.topleft - offset)
+    # Отрисовка хитбокса игрока
+    # player.draw_hitbox(screen, offset)
     player.draw_status_bars(screen)
     screen.blit(crosshair_surface, (mouse_pos[0] - 20, mouse_pos[1] - 20))
 

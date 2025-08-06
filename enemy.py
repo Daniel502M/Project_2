@@ -17,10 +17,10 @@ class Enemy(pygame.sprite.Sprite):
         self.state = "patrolling"
         self.current_frame = 0
         self.angle = 0
-        self.animation_speed = 0.1
+        self.animation_speed = 0.4
         self.attack_damage_applied = False
 
-        self.move_frames = [pygame.image.load(f"assets/Animation/Zombie_Brown_Animation_{i+1}.png").convert_alpha() for i in range(7)]
+        self.move_frames = [pygame.image.load(f"assets/Animation/Zombie_New_Animation_{i+1}.png").convert_alpha() for i in range(7)]
         self.attack_frames = [pygame.image.load(f"assets/Attack_Animation/Zombie_Brown_Attack_Animation_{i+1}.png").convert_alpha() for i in range(4)]
         self.death_frames = [pygame.image.load(f"assets/Zombie_Kill/Zombie_Brown_Kill_{i+1}.png").convert_alpha() for i in range(2)]
 

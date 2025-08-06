@@ -6,9 +6,17 @@ from settings import PLAYER_SPEED, MAP_WIDTH, MAP_HEIGHT
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
-        self.original_image = pygame.image.load('assets/player.png').convert_alpha()
-        self.image = self.original_image
+        self.animation = []
+        for i in range(1, 7):  # Предполагаем 6 кадров анимации
+            self.animation.append(pygame.image.load(f'assets/Animation/Player_Animation_{i}.png').convert_alpha())
+        self.current_frame = 0
+        self.original_image = self.animation[self.current_frame]  # Сохраняем оригинальное изображение
+        self.image = self.animation[self.current_frame]
         self.rect = self.image.get_rect(center=pos)
+
+        self.frame_timer = 0
+        self.frame_duration = 100  # Время между кадрами в мс
+        self.is_moving = False  # Флаг движения
 
         self.speed = PLAYER_SPEED
         self.health = 100
@@ -68,11 +76,39 @@ class Player(pygame.sprite.Sprite):
         print("Player has died!")
 
     def update(self, keys, mouse_pos, bullets_group, obstacles, shoot_sound=None):
+        self.update_animation() #
+
         dx, dy = self.handle_movement(keys)
+
+        dx, dy = self.handle_movement(keys)
+
+        # Проверяем движение
+        if dx != 0 or dy != 0:
+            self.is_moving = True
+        else:
+            self.is_moving = False
+            self.current_frame = 0  # Возвращаемся к первому кадру
+            self.original_image = self.animation[self.current_frame]
+            self.image = self.original_image
+
         self.rotate(mouse_pos)
         self.handle_shooting(mouse_pos, bullets_group, shoot_sound)
         self.move_and_collide(dx, dy, obstacles)
         self.update_hitbox()
+
+        # Обновляем анимацию только при движении
+        if self.is_moving:
+            self.update_animation()
+
+    def update_animation(self):
+        # Обновляем текущий кадр анимации
+        now = pygame.time.get_ticks()
+        if now - self.frame_timer > self.frame_duration:
+            self.frame_timer = now
+            self.current_frame = (self.current_frame + 1) % len(self.animation)
+            self.original_image = self.animation[self.current_frame]  # Обновляем оригинальное изображение
+            #self.image = self.animation[self.current_frame] #
+            self.image = self.original_image
 
     def update_hitbox(self):
         self.hitbox.center = self.rect.center
@@ -107,6 +143,8 @@ class Player(pygame.sprite.Sprite):
         return dx, dy
 
     def rotate(self, mouse_pos):
+        original_image = self.original_image
+
         rel_x = mouse_pos[0] - self.rect.centerx
         rel_y = mouse_pos[1] - self.rect.centery
         angle = math.degrees(-math.atan2(rel_y, rel_x)) + 282
