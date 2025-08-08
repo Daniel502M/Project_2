@@ -16,10 +16,10 @@ class TileMap:
         if self.config is None:
             raise ValueError(f"[❌] Нет конфигурации карты для {filename}")
 
+        self.object_offsets = self.config.get("object_offsets", {})  # смещения по координатам
+        self.gid_offsets = self.config.get("gid_offsets", {})        # смещения по GID
+
     def draw(self, surface, offset=pygame.Vector2(0, 0), skip_door_ids=None, show_tile_ids=False, allowed_gids=None):
-        """Отрисовывает карту. Если указан skip_door_ids — не рисует двери с этими id.
-        При show_tile_ids=True отображает ID каждого тайла поверх него (для отладки).
-        Если указан allowed_gids — отображаются только указанные GID."""
         if skip_door_ids is None:
             skip_door_ids = set()
 
@@ -32,31 +32,29 @@ class TileMap:
                     if gid == 0:
                         continue
 
-                    # Пропускаем только указанные двери
                     door_id = f"{x}_{y}"
-                    if gid in door_gids:
-                        if door_id in skip_door_ids:
-                            continue
+                    if gid in door_gids and door_id in skip_door_ids:
+                        continue
 
-                    # Основная отрисовка всех объектов
                     tile = self.tmx_data.get_tile_image_by_gid(gid)
                     if tile:
-                        pos_x = x * self.tile_width - offset.x
-                        pos_y = y * self.tile_height - offset.y
+                        # Смещение по координатам и GID
+                        ox1, oy1 = self.object_offsets.get((x, y), (0, 0))
+                        ox2, oy2 = self.gid_offsets.get(gid, (0, 0))
+                        pos_x = x * self.tile_width + ox1 + ox2 - offset.x
+                        pos_y = y * self.tile_height + oy1 + oy2 - offset.y
                         surface.blit(tile, (pos_x, pos_y))
 
-                    # Отображение ID тайлов при необходимости
-                    if show_tile_ids and font:
-                        if allowed_gids is None or gid in allowed_gids:
-                            text = font.render(str(gid), True, (255, 0, 0))
-                            surface.blit(text, (pos_x + 10, pos_y + 10))
+                        if show_tile_ids and font:
+                            if allowed_gids is None or gid in allowed_gids:
+                                text = font.render(str(gid), True, (255, 0, 0))
+                                surface.blit(text, (pos_x + 10, pos_y + 10))
 
     def get_collision_rects(self, layer_name="Стены"):
         walls = []
         doors = []
 
         ignored_gids = self.config.get("ignored_collision_gids", set())
-
         door_gids = self.config.get("door_gids", {}).keys()
         processed_doors = set()
 
@@ -65,24 +63,21 @@ class TileMap:
         wall_hitboxes = self.config.get("wall_hitboxes", {})
 
         for x, y, gid in layer:
-            if gid == 0:
+            if gid == 0 or gid in ignored_gids:
                 continue
 
-            if gid in ignored_gids:
-                continue  # 💥 отключаем коллизии для заданных GID
-
-            tile_x = x * self.tile_width
-            tile_y = y * self.tile_height
+            ox1, oy1 = self.object_offsets.get((x, y), (0, 0))
+            ox2, oy2 = self.gid_offsets.get(gid, (0, 0))
+            tile_x = x * self.tile_width + ox1 + ox2
+            tile_y = y * self.tile_height + oy1 + oy2
             w, h = self.tile_width, self.tile_height
 
-            # Обработка только дверей
             if gid in door_gids:
                 door_id = f"{x}_{y}"
                 if door_id in processed_doors:
                     continue
                 processed_doors.add(door_id)
 
-                # Создание хитбокса для двери
                 door_type = self.config["door_gids"][gid][0]
                 if door_type == "top":
                     rect = pygame.Rect(tile_x, tile_y, w, 13)
@@ -103,31 +98,22 @@ class TileMap:
                 })
                 continue
 
-            # Обработка стен и других объектов
             if gid in wall_hitboxes:
                 for ox, oy, ww, hh in wall_hitboxes[gid]:
-                    walls.append(pygame.Rect(
-                        tile_x + ox,
-                        tile_y + oy,
-                        ww,
-                        hh
-                    ))
+                    walls.append(pygame.Rect(tile_x + ox, tile_y + oy, ww, hh))
             else:
                 walls.append(pygame.Rect(tile_x, tile_y, w, h))
 
         return walls, doors
 
     def get_closed_door_image(self, door):
-        """Возвращает изображение закрытой двери по GID."""
         return self.tmx_data.get_tile_image_by_gid(door["gid"])
 
     def get_object_collision_rects(self, layer_name="Объекты"):
-        """Возвращает коллизии объектов и прямоугольники, блокирующие пули."""
         object_rects = []
         bullet_blocking_rects = []
 
         ignored_gids = self.config.get("ignored_collision_gids", set())
-
         bullet_passable_gids = self.config.get("bullet_passable_gids", set())
         gid_hitboxes = self.config.get("gid_hitboxes", {})
 
@@ -142,14 +128,13 @@ class TileMap:
             return [], []
 
         for x, y, gid in layer:
-            if gid == 0:
+            if gid == 0 or gid in ignored_gids:
                 continue
 
-            if gid in ignored_gids:
-                continue
-
-            tile_x = x * self.tile_width
-            tile_y = y * self.tile_height
+            ox1, oy1 = self.object_offsets.get((x, y), (0, 0))
+            ox2, oy2 = self.gid_offsets.get(gid, (0, 0))
+            tile_x = x * self.tile_width + ox1 + ox2
+            tile_y = y * self.tile_height + oy1 + oy2
 
             if gid in gid_hitboxes:
                 w, h, ox, oy = gid_hitboxes[gid]
